@@ -1,0 +1,28 @@
+{
+    "notes": "importer.json", 
+    "type": "RigBuilder", 
+    "attrs": {}, 
+    "blocks": [
+        {
+            "type": "ScriptBlock", 
+            "name": "block1", 
+            "description": "", 
+            "active": true, 
+            "inputs": {}, 
+            "attrs": {
+                "func": "import maya.cmds as mc\n\nmc.file(new=1,f=1)"
+            }
+        }, 
+        {
+            "type": "MayaSceneImporter", 
+            "name": "block2", 
+            "description": "", 
+            "active": true, 
+            "inputs": {}, 
+            "attrs": {
+                "sceneFile": "E:\\cg_wip\\motion\\mixamo\\jump_mapping_1.mb"
+            }
+        }
+    ], 
+    "results": {}
+}
