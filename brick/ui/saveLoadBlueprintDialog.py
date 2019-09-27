@@ -193,10 +193,11 @@ class LoadBlueprintDialog(AbstractBlueprintDialog):
         self.notesField.setParent(None)
         self.notesLabel.setParent(None)
 
-        self.cancelButton = QtWidgets.QPushButton('Cancel')
-        self.actionButtonLayout.addWidget(self.cancelButton)
         self.loadButton = QtWidgets.QPushButton('Load')
         self.actionButtonLayout.addWidget(self.loadButton)
+        self.cancelButton = QtWidgets.QPushButton('Cancel')
+        self.actionButtonLayout.addWidget(self.cancelButton)
+
 
     def initSignals(self):
         super(LoadBlueprintDialog, self).initSignals()
@@ -222,10 +223,11 @@ class SaveBlueprintDialog(AbstractBlueprintDialog):
 
     def initUI(self):
         super(SaveBlueprintDialog, self).initUI()
-        self.cancelButton = QtWidgets.QPushButton('Cancel')
-        self.actionButtonLayout.addWidget(self.cancelButton)
         self.saveButton = QtWidgets.QPushButton('Save')
         self.actionButtonLayout.addWidget(self.saveButton)
+        self.cancelButton = QtWidgets.QPushButton('Cancel')
+        self.actionButtonLayout.addWidget(self.cancelButton)
+
 
     def initSignals(self):
         super(SaveBlueprintDialog, self).initSignals()

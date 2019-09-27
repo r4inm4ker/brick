@@ -1,8 +1,10 @@
 import os
 from collections import OrderedDict
 from functools import partial
-from Qt import QtCore, QtGui, QtWidgets
-from Qt.QtCompat import loadUi
+from qqt import QtCore, QtGui, QtWidgets, QtCompat
+
+loadUi = QtCompat.loadUi
+
 import logging
 
 log = logging.getLogger("brick")
@@ -14,7 +16,14 @@ from brick.constants import BuildStatus
 from brick.ui import attrField
 from brick.ui import saveLoadBlueprintDialog as ioDialog
 
-from brick.constants import ICON_DIR
+from brick.lib.path import Path
+import brick
+
+icon_dir = Path(brick.__file__).dirname() / "ui" / "icons"
+
+from qqt import IconManager
+IconManager.addDir(icon_dir)
+
 
 UIDIR = os.path.dirname(__file__)
 
@@ -30,7 +39,7 @@ class BrickUI(QtWidgets.QWidget):
         layout.addWidget(win)
 
     @classmethod
-    def launch(cls, dockable=False):
+    def launch(cls):
         bui = cls()
         bui.show()
         return bui
@@ -43,9 +52,10 @@ class BrickWindow(QtWidgets.QMainWindow):
         self.widget.setContentsMargins(0, 0, 0, 0)
         self.setCentralWidget(self.widget)
         self.menuBar = None
-        self.initMenuBar()
+        self._initMenuBar()
+        self._initToolBar()
 
-    def initMenuBar(self):
+    def _initMenuBar(self):
         self.menuBar = QtWidgets.QMenuBar()
 
         menuFile = QtWidgets.QMenu('Blueprint', self.menuBar)
@@ -72,6 +82,25 @@ class BrickWindow(QtWidgets.QMainWindow):
 
         self.setMenuBar(self.menuBar)
 
+
+    def _initToolBar(self):
+        toolBar = QtWidgets.QToolBar()
+
+        icon = IconManager.get("new.png", type="icon")
+        action = toolBar.addAction(icon, "new blueprint")
+        action.triggered.connect(self.widget.newBlueprint)
+
+        icon = IconManager.get("open.png", type="icon")
+        action = toolBar.addAction(icon, "open blueprint")
+        action.triggered.connect(self.widget.loadBlueprint)
+
+
+        icon = IconManager.get("save.png", type="icon")
+        action = toolBar.addAction(icon, "save blueprint")
+        action.triggered.connect(self.widget.saveBlueprint)
+
+
+        self.addToolBar(toolBar)
 
 class BrickWidget(QtWidgets.QWidget):
     _uifile = os.path.join(UIDIR, "brickWidget.ui")
