@@ -1,6 +1,6 @@
 import json
 from collections import OrderedDict
-from gen_lib.path import Path
+from lib.path import Path
 from .constants import BuildStatus, BLUEPRINT_EXTENSION
 from . import attrtype
 from brick import lib
