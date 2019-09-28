@@ -27,7 +27,6 @@ class StringField(AttrField, QtWidgets.QLineEdit):
 class ScriptField(AttrField, QtWidgets.QWidget):
     def __init__(self, parent=None):
         super(ScriptField, self).__init__(parent)
-
         layout = QtWidgets.QHBoxLayout()
         self.setLayout(layout)
 

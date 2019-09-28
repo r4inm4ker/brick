@@ -3,6 +3,7 @@ from brick.base import Generic
 
 
 class ScriptBlock(Generic):
+    ui_order = 010
     fixedAttrs = (('func', (Script, '')),)
 
     def _execute(self):

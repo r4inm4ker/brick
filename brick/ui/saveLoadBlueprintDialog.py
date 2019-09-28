@@ -31,21 +31,21 @@ class BlueprintTreeWidget(QtWidgets.QTreeWidget):
     """
     A treeWidget to list (and delete) existing blueprints.
     """
-    headerLabels = ['Blueprint Name', 'Variant', 'Notes', 'Delete']
+    headerLabels = ['Blueprint Name', 'Notes', 'Delete']
 
     def __init__(self, mainWidget, parent=None):
         super(BlueprintTreeWidget, self).__init__(parent=parent)
         self._mainWidget = mainWidget
-        self.initUI()
-        self.initSignals()
+        self._initUI()
+        self._connectSignals()
 
-    def initUI(self):
+    def _initUI(self):
         self.setColumnCount(len(self.headerLabels))
         self.setHeaderLabels(self.headerLabels)
         self.setColumnWidth(0, 200)
         self.setColumnWidth(1, 100)
 
-    def initSignals(self):
+    def _connectSignals(self):
         self.itemSelectionChanged.connect(self.updateRelatedFields)
 
     def updateRelatedFields(self):
@@ -203,6 +203,7 @@ class LoadBlueprintDialog(AbstractBlueprintDialog):
         super(LoadBlueprintDialog, self).initSignals()
         self.loadButton.clicked.connect(self.callLoadBlueprint)
         self.cancelButton.clicked.connect(self.close)
+        self.blueprintTreeWidget.itemDoubleClicked.connect(self.callLoadBlueprint)
 
     def callLoadBlueprint(self):
         baseDir = Path(self.baseDirField.text())

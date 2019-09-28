@@ -75,5 +75,6 @@ def collectBlocksByCategory():
             continue
 
         clsmap[opcls.category].append(opcls)
+        clsmap[opcls.category].sort(key=lambda x:x.ui_order)
 
     return clsmap

@@ -1,6 +1,7 @@
 from brick.base import Generic
 
 class MayaSceneImporter(Generic):
+    ui_order = 030
     fixedAttrs = (('sceneFile', (str, '')),)
 
     def _execute(self):

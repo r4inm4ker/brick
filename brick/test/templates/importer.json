@@ -1,6 +1,6 @@
 {
     "notes": "importer.json", 
-    "type": "RigBuilder", 
+    "type": "GenericBuilder",
     "attrs": {}, 
     "blocks": [
         {

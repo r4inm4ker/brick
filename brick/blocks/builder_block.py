@@ -1,4 +1,4 @@
-from brick.base import Generic, RigBuilder
+from brick.base import Generic, GenericBuilder
 from brick.constants import BuildStatus
 
 
@@ -7,7 +7,8 @@ class BuildError(Exception):
 
 
 class BuilderBlock(Generic):
-    fixedAttrs = (('type', (str, 'RigBuilder')),
+    ui_order = 020
+    fixedAttrs = (('type', (str, 'GenericBuilder')),
                   ('blueprint', (str, ''))
     )
 
@@ -16,7 +17,7 @@ class BuilderBlock(Generic):
 
         blueprintName = self.attrs.get('blueprint')
 
-        builder = RigBuilder.loadBlueprint(blueprintName)
+        builder = GenericBuilder.loadBlueprint(blueprintName)
 
         builder.fastForward()
 

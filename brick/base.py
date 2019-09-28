@@ -167,7 +167,7 @@ class Builder(object):
                 log.warn('invalid result attribute: {0}.{1}'.format(node, attr))
 
 
-class RigBuilder(Builder):
+class GenericBuilder(Builder):
     pass
     # fixedAttrs = (('variant', (attrtype.Variant, None)),)
     fixedAttrs = ()
@@ -285,8 +285,8 @@ class Block(object):
         self.name = data.get('name')
         self.description = data.get('description')
         self.attrs = data.get('attrs')
-        self.inputs = data.get('inputs')
-        self.active = data.get('active')
+        self.inputs = data.get('inputs',{})
+        self.active = data.get('active',True)
 
     def reset(self):
         self.buildStatus = BuildStatus.nothing
@@ -294,19 +294,10 @@ class Block(object):
         self.log = ''
 
 
-class TemplateImporter(Block):
-    category = 'template loader'
-    categoryOrder = 200
-
 
 class Generic(Block):
     category = 'generic'
     categoryOrder = 100
-
-
-class ProductImporter(Block):
-    category = 'product importer'
-    categoryOrder = 300
 
 
 class Helper(Block):

@@ -2,6 +2,7 @@ import os
 from collections import OrderedDict
 from functools import partial
 from qqt import QtCore, QtGui, QtWidgets, QtCompat
+from qqt.gui import qcreate, VBoxLayout, HBoxLayout, Button, ContextMenu
 
 loadUi = QtCompat.loadUi
 
@@ -37,6 +38,7 @@ class BrickUI(QtWidgets.QWidget):
         self.setLayout(layout)
         win = BrickWindow()
         layout.addWidget(win)
+        self.resize(800,1000)
 
     @classmethod
     def launch(cls):
@@ -55,10 +57,11 @@ class BrickWindow(QtWidgets.QMainWindow):
         self._initMenuBar()
         self._initToolBar()
 
+
     def _initMenuBar(self):
         self.menuBar = QtWidgets.QMenuBar()
 
-        menuFile = QtWidgets.QMenu('Blueprint', self.menuBar)
+        menuFile = QtWidgets.QMenu('File', self.menuBar)
         self.menuBar.addMenu(menuFile)
 
         action = QtWidgets.QAction('new', self)
@@ -111,6 +114,10 @@ class BrickWidget(QtWidgets.QWidget):
         self.blueprintWidget = None
         self.initUI()
         self.populateBlocks()
+        self.__test()
+
+    def __test(self):
+        self.blueprintWidget.load(r"E:\git\brick\brick\test\templates\test2.json")
 
     @classmethod
     def launch(cls):
@@ -186,9 +193,9 @@ class BrickWidget(QtWidgets.QWidget):
 class BlueprintWidget(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super(BlueprintWidget, self).__init__(parent=parent)
-        self.initUI()
-        self.initSignals()
-        self.initData()
+        self._initUI()
+        self._connectSignals()
+        self._initData()
         self._builder = None
 
     @property
@@ -201,61 +208,37 @@ class BlueprintWidget(QtWidgets.QWidget):
     def builder(self, builder):
         self._builder = builder
 
-    def initUI(self):
+    def _initUI(self):
         self.setContentsMargins(0, 0, 0, 0)
-        layout = QtWidgets.QVBoxLayout()
-        self.setLayout(layout)
+        layout = VBoxLayout(self)
+        with layout:
+            self.headerWidget = qcreate(HeaderWidget)
+            self.blockMenu = qcreate(BlockMenuWidget,self)
+            self.blockListWidget = qcreate(BlockListWidget)
+            with qcreate(HBoxLayout):
+                icon = IconManager.get("rewind.png", type="icon")
+                self.rewindButton = qcreate(Button,icon,"")
+                self.rewindButton.setMinimumHeight(25)
 
-        self.headerWidget = HeaderWidget()
-        layout.addWidget(self.headerWidget)
+                icon = IconManager.get("step_back.png", type="icon")
+                self.stepBackButton = qcreate(Button, icon, "")
+                self.stepBackButton.setMinimumHeight(25)
+                self.stepBackButton.setMaximumWidth(30)
 
-        self.blockMenu = BlockMenuWidget(self)
-        layout.addWidget(self.blockMenu)
+                icon = IconManager.get("build_next.png", type="icon")
+                self.buildNextButton = qcreate(Button, icon, "")
+                self.buildNextButton.setMinimumHeight(25)
 
-        self.itemList = BlockListWidget()
-        layout.addWidget(self.itemList)
+                icon = IconManager.get("step_forward.png", type="icon")
+                self.stepForwardButton = qcreate(Button, icon, "")
+                self.stepForwardButton.setMinimumHeight(25)
+                self.stepForwardButton.setMaximumWidth(30)
 
-        horiLayout = QtWidgets.QHBoxLayout()
+                icon = IconManager.get("fast_forward.png", type="icon")
+                self.fastForwardButton = qcreate(Button, icon, "")
+                self.fastForwardButton.setMinimumHeight(25)
 
-        self.rewindButton = QtWidgets.QPushButton()
-        newicon = os.path.join(UIDIR, 'icons', 'rewind.png')
-        icon = QtGui.QIcon(QtGui.QPixmap(newicon))
-        self.rewindButton.setIcon(icon)
-        self.rewindButton.setMinimumHeight(25)
-        horiLayout.addWidget(self.rewindButton)
-
-        self.stepBackButton = QtWidgets.QPushButton()
-        newicon = os.path.join(UIDIR, 'icons', 'step_back.png')
-        icon = QtGui.QIcon(QtGui.QPixmap(newicon))
-        self.stepBackButton.setIcon(icon)
-        self.stepBackButton.setMinimumHeight(25)
-        self.stepBackButton.setMaximumWidth(30)
-        horiLayout.addWidget(self.stepBackButton)
-
-        self.buildNextButton = QtWidgets.QPushButton()
-        newicon = os.path.join(UIDIR, 'icons', 'build_next.png')
-        icon = QtGui.QIcon(QtGui.QPixmap(newicon))
-        self.buildNextButton.setIcon(icon)
-        self.buildNextButton.setMinimumHeight(25)
-        horiLayout.addWidget(self.buildNextButton)
-
-        self.stepForwardButton = QtWidgets.QPushButton()
-        newicon = os.path.join(UIDIR, 'icons', 'step_forward.png')
-        icon = QtGui.QIcon(QtGui.QPixmap(newicon))
-        self.stepForwardButton.setIcon(icon)
-        self.stepForwardButton.setMinimumHeight(25)
-        self.stepForwardButton.setMaximumWidth(30)
-        horiLayout.addWidget(self.stepForwardButton)
-
-        self.fastForwardButton = QtWidgets.QPushButton()
-        newicon = os.path.join(UIDIR, 'icons', 'fast_forward.png')
-        icon = QtGui.QIcon(QtGui.QPixmap(newicon))
-        self.fastForwardButton.setIcon(icon)
-        self.fastForwardButton.setMinimumHeight(25)
-        horiLayout.addWidget(self.fastForwardButton)
-        layout.addLayout(horiLayout)
-
-    def initSignals(self):
+    def _connectSignals(self):
         self.rewindButton.clicked.connect(self.rewind)
         self.fastForwardButton.clicked.connect(self.fastForward)
         self.buildNextButton.clicked.connect(self.buildNext)
@@ -263,15 +246,16 @@ class BlueprintWidget(QtWidgets.QWidget):
         self.stepBackButton.clicked.connect(self.stepBack)
         self.stepForwardButton.clicked.connect(self.stepForward)
 
-        self.itemList.currentItemChanged.connect(self.refreshIndicator)
+        self.blockListWidget.currentItemChanged.connect(self.refreshIndicator)
 
-        self.itemList.itemOrderChanged.connect(self.itemOrderChanged)
+        self.blockListWidget.itemOrderChanged.connect(self.itemOrderChanged)
+        self.blockListWidget.currentIndexSet.connect(self.setBuilderIndex)
 
-    def initData(self):
-        self.headerWidget.initAttrs(base.RigBuilder)
+    def _initData(self):
+        self.headerWidget.initAttrs(base.GenericBuilder)
 
     def createBuilder(self):
-        builder = base.RigBuilder()
+        builder = base.GenericBuilder()
 
         for idx in range(self.headerWidget.attrTree.topLevelItemCount()):
             item = self.headerWidget.attrTree.topLevelItem(idx)
@@ -282,7 +266,7 @@ class BlueprintWidget(QtWidgets.QWidget):
         return builder
 
     def refreshIndicator(self):
-        for idx, widget in enumerate(self.itemList.opWidgets):
+        for idx, widget in enumerate(self.blockListWidget.opWidgets):
             if idx == self.nextStep:
                 widget.switchIndicator(BuildStatus.next)
                 try:
@@ -299,8 +283,12 @@ class BlueprintWidget(QtWidgets.QWidget):
                 except (IndexError, AttributeError):
                     widget.switchIndicator(BuildStatus.nothing)
 
+    def setBuilderIndex(self, index):
+        self.builder.nextStep = index
+        self.refreshIndicator()
+
     def collectItemMap(self):
-        return [wg.op.name for wg in self.itemList.opWidgets]
+        return [wg.op.name for wg in self.blockListWidget.opWidgets]
 
     def itemOrderChanged(self):
         opOrder = self.collectItemMap()
@@ -312,7 +300,7 @@ class BlueprintWidget(QtWidgets.QWidget):
         try:
             nextStep = self.builder.nextStep
         except AttributeError:
-            if not self.itemList.opWidgets:
+            if not self.blockListWidget.opWidgets:
                 return
             else:
                 nextStep = 0
@@ -321,12 +309,12 @@ class BlueprintWidget(QtWidgets.QWidget):
 
     @property
     def nextWidget(self):
-        for idx, widget in enumerate(self.itemList.opWidgets):
+        for idx, widget in enumerate(self.blockListWidget.opWidgets):
             if idx == self.nextStep:
                 return widget
 
     def refreshAllBlocks(self):
-        for opWidget in self.itemList.opWidgets:
+        for opWidget in self.blockListWidget.opWidgets:
             data = opWidget.genData()
             opWidget.op.reload(data)
 
@@ -339,7 +327,7 @@ class BlueprintWidget(QtWidgets.QWidget):
     def rewind(self):
         self.builder.reset()
         self.refreshIndicator()
-        self.itemList.scrollToTop()
+        self.blockListWidget.scrollToTop()
 
     def stepBack(self):
         if self.builder.nextStep > 0:
@@ -347,7 +335,7 @@ class BlueprintWidget(QtWidgets.QWidget):
         self.refreshIndicator()
 
     def stepForward(self):
-        if self.builder.nextStep < len(self.itemList.opWidgets):
+        if self.builder.nextStep < len(self.blockListWidget.opWidgets):
             self.builder.nextStep += 1
         self.refreshIndicator()
 
@@ -365,7 +353,7 @@ class BlueprintWidget(QtWidgets.QWidget):
         ret = self.builder.buildNext()
         self.refreshIndicator()
         if self.nextWidget:
-            self.itemList.setCurrentItem(self.nextWidget.item)
+            self.blockListWidget.setCurrentItem(self.nextWidget.item)
 
         return ret
 
@@ -407,7 +395,7 @@ class BlueprintWidget(QtWidgets.QWidget):
 
     def load(self, blueprintPath):
         self.clear()
-        builder = base.RigBuilder.loadBlueprint(blueprintPath)
+        builder = base.GenericBuilder.loadBlueprint(blueprintPath)
         self.headerWidget.loadAttrs(builder)
         for block in builder.blocks:
             self.addBlock(block)
@@ -416,7 +404,7 @@ class BlueprintWidget(QtWidgets.QWidget):
 
     def clear(self):
         self.headerWidget.reset()
-        self.itemList.clear()
+        self.blockListWidget.clear()
         self.builder = None
 
     def initDefault(self):
@@ -428,8 +416,8 @@ class BlueprintWidget(QtWidgets.QWidget):
         blockIndex = 1
         while True:
             uname = "{0}{1}".format(baseName, blockIndex)
-            for idx in range(self.itemList.count()):
-                item = self.itemList.item(idx)
+            for idx in range(self.blockListWidget.count()):
+                item = self.blockListWidget.item(idx)
                 if not hasattr(item.widget, 'blockName'):
                     continue
                 if uname == item.widget.blockName.text():
@@ -452,15 +440,16 @@ class BlueprintWidget(QtWidgets.QWidget):
         else:
             item.setSizeHint(QtCore.QSize(50, 130))
             opWidget = BlockWidget(block, item)
+            opWidget.runBlockSignal.connect(self.runItemCallback)
 
         opWidget.itemDeleted.connect(self.deleteBlock)
 
         item.widget, opWidget.item = opWidget, item
 
-        self.itemList.addItem(item)
+        self.blockListWidget.addItem(item)
         self.builder.addBlock(block)
-        self.itemList.setItemWidget(item, opWidget)
-        self.itemList.setCurrentItem(item)
+        self.blockListWidget.setItemWidget(item, opWidget)
+        self.blockListWidget.setCurrentItem(item)
 
         # TODO: find a more reliable way to do this (init indicator)
         self.refreshIndicator()
@@ -470,6 +459,12 @@ class BlueprintWidget(QtWidgets.QWidget):
     def deleteBlock(self, op):
         self.builder.blocks.remove(op)
         log.info("deleted: {0}".format(self.builder.blocks))
+
+    def runItemCallback(self, item):
+        index = self.blockListWidget.indexFromItem(item).row()
+        self.setBuilderIndex(index)
+        self.buildNext()
+
 
 
 class BlockMenuWidget(QtWidgets.QWidget):
@@ -519,12 +514,23 @@ class BlockListWidget(QtWidgets.QListWidget):
     """
 
     itemOrderChanged = QtCore.Signal()
+    currentIndexSet = QtCore.Signal(int)
+
 
     def __init__(self, parent=None):
         super(BlockListWidget, self).__init__(parent=parent)
         self.setDragDropMode(QtWidgets.QAbstractItemView.InternalMove)
 
         self.setStyleSheet(self.stylesheet)
+        self.setAlternatingRowColors(True)
+
+        self.contextMenu = ContextMenu(self)
+
+        self.contextMenu.addCommand("edit annotation", self.editAnnotationCallback)
+        self.contextMenu.addSeparator()
+        self.contextMenu.addCommand("start from here", self.setNextToSelected)
+
+
         self._currItemRow = None
 
     @property
@@ -550,6 +556,18 @@ class BlockListWidget(QtWidgets.QListWidget):
         super(BlockListWidget, self).rowsInserted(*args, **kwargs)
         self.scrollToBottom()
 
+
+    def setNextToSelected(self):
+        index = self.currentIndex()
+        self.currentIndexSet.emit(index)
+
+    def editAnnotationCallback(self):
+        pass
+
+    def currentIndex(self):
+        indices = self.selectedIndexes()
+        if indices:
+            return indices[0].row()
 
 class BlockItem(QtWidgets.QListWidgetItem):
     def sizeUp(self):
@@ -597,9 +615,9 @@ class HeaderWidget(QtWidgets.QWidget):
 
     def reset(self):
         self.clear()
-        self.initAttrs(base.RigBuilder)
+        self.initAttrs(base.GenericBuilder)
 
-
+from brick.ui.components import block_widget
 class BaseBlockWidget(QtWidgets.QWidget):
     itemDeleted = QtCore.Signal(object)
 
@@ -663,13 +681,10 @@ class BreakpointWidget(BaseBlockWidget):
         return data
 
 
-class BlockWidget(BaseBlockWidget):
-    _uifile = os.path.join(UIDIR, "blockWidget.ui")
-
+class BlockWidget(BaseBlockWidget, block_widget.BlockWidget):
+    runBlockSignal = QtCore.Signal(BlockItem)
     def __init__(self, op, item, parent=None):
         super(BlockWidget, self).__init__(op, item, parent=parent)
-        loadUi(self._uifile, self)
-
         self.setContentsMargins(0, 0, 0, 0)
 
         self.op = op
@@ -677,10 +692,6 @@ class BlockWidget(BaseBlockWidget):
         self.blockType.setText(op.__class__.__name__)
 
         self.attrTree = AttrTree(self)
-
-        if not hasattr(op, 'attrs') or not getattr(op, 'attrs'):
-            for fixedAttr in self.op.fixedAttrs:
-                self.attrTree.addAttr(fixedAttr)
 
         self.attrTreeLayout.addWidget(self.attrTree)
 
@@ -690,6 +701,7 @@ class BlockWidget(BaseBlockWidget):
     def initSignals(self):
         super(BlockWidget, self).initSignals()
         self.blockName.textEdited.connect(self.editNameChange)
+        self.runBlockButton.clicked.connect(self.runBlockCalled)
 
     def editNameChange(self):
         self.op.name = self.blockName.text()
@@ -698,16 +710,29 @@ class BlockWidget(BaseBlockWidget):
         op = self.op
         self.blockName.setText(op.name)
 
+        # if not hasattr(op, 'attrs') or not getattr(op, 'attrs'):
+        for fixedAttr in self.op.fixedAttrs:
+            aname, (atype, aval) = fixedAttr
+            self.attrTree.addAttr(fixedAttr)
+            if aname in op.attrs:
+                val = op.attrs.get(aname)
+                self.attrTree.setAttr(aname,val)
+
         for key, val in op.attrs.iteritems():
             if key not in self.attrTree.attrs():
                 attrType = type(val)
                 data = (key, (attrType, val))
                 self.attrTree.addAttr(data)
 
+
         for key, val in op.inputs.iteritems():
             if key not in self.attrTree.attrs():
                 data = (key, (type(val), val))
                 self.attrTree.addAttr(data)
+
+    def runBlockCalled(self):
+        self.runBlockSignal.emit(self.item)
+
 
     def genData(self):
         data = OrderedDict()
@@ -743,7 +768,7 @@ class BlockWidget(BaseBlockWidget):
     def sizeUp(self):
         item = self.item
         numItem = self.attrTree.topLevelItemCount()
-        baseHeight = 90
+        baseHeight = 150
         itemHeight = 30
         sizeHint = QtCore.QSize(item.sizeHint().width(), baseHeight + numItem * itemHeight)
 
@@ -791,6 +816,20 @@ class AttrTree(QtWidgets.QTreeWidget):
         attrItem.setFlags(attrItem.flags() ^ QtCore.Qt.ItemIsSelectable)
         attrItem.setWidget()
         self._parent.sizeUp()
+
+    def setAttr(self, key, val):
+        for item in self.allItems():
+            if key == item.attrName:
+                item.setValue(val)
+
+
+    def allItems(self):
+        items  = []
+        for idx in range(self.topLevelItemCount()):
+            item = self.topLevelItem(idx)
+            items.append(item)
+
+        return items
 
     def addInput(self, inputData):
         inputItem = AttrItem(inputData)
