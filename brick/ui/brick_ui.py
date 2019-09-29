@@ -17,6 +17,8 @@ from brick.constants import BuildStatus
 from brick.ui import attrField
 from brick.ui import saveLoadBlueprintDialog as ioDialog
 
+from brick import settings
+
 from brick.lib.path import Path
 import brick
 
@@ -26,6 +28,7 @@ from qqt import IconManager
 IconManager.addDir(icon_dir)
 
 
+
 UIDIR = os.path.dirname(__file__)
 
 
@@ -33,12 +36,15 @@ class BrickUI(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super(BrickUI, self).__init__(parent=parent)
         self.setWindowTitle("Brick")
+        icon = IconManager.get("brick.png", type="icon")
+        self.setWindowIcon(icon)
         layout = QtWidgets.QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
         win = BrickWindow()
         layout.addWidget(win)
         self.resize(800,1000)
+
 
     @classmethod
     def launch(cls):
@@ -50,13 +56,12 @@ class BrickUI(QtWidgets.QWidget):
 class BrickWindow(QtWidgets.QMainWindow):
     def __init__(self, parent=None):
         super(BrickWindow, self).__init__(parent=parent)
-        self.widget = BrickWidget()
+        self.widget = BrickWidget(mainWindow=self)
         self.widget.setContentsMargins(0, 0, 0, 0)
         self.setCentralWidget(self.widget)
         self.menuBar = None
         self._initMenuBar()
         self._initToolBar()
-
 
     def _initMenuBar(self):
         self.menuBar = QtWidgets.QMenuBar()
@@ -76,6 +81,9 @@ class BrickWindow(QtWidgets.QMainWindow):
         action.triggered.connect(self.widget.saveBlueprint)
         menuFile.addAction(action)
 
+        self.recentMenu = QtWidgets.QMenu('recent blueprints', self.menuBar)
+        menuFile.addMenu(self.recentMenu)
+
         menuWindow = QtWidgets.QMenu('Help', self.menuBar)
         self.menuBar.addMenu(menuWindow)
 
@@ -85,6 +93,23 @@ class BrickWindow(QtWidgets.QMainWindow):
 
         self.setMenuBar(self.menuBar)
 
+        self.updateRecentFileMenu()
+
+    def updateRecentFileMenu(self):
+        data = settings.getHistoryData()
+        recentBluePrints = data.get(settings.Settings.Recent_Files,[])
+        if recentBluePrints:
+            self.recentMenu.clear()
+            for filePath in recentBluePrints:
+                action = QtWidgets.QAction(filePath,self)
+                action.triggered.connect(partial(self.loadBluePrintCallback,filePath))
+                self.recentMenu.addAction(action)
+
+
+    def loadBluePrintCallback(self, filePath):
+        self.widget.blueprintWidget.load(filePath)
+        settings.addRecentBlueprint(filePath)
+        self.updateRecentFileMenu()
 
     def _initToolBar(self):
         toolBar = QtWidgets.QToolBar()
@@ -108,8 +133,9 @@ class BrickWindow(QtWidgets.QMainWindow):
 class BrickWidget(QtWidgets.QWidget):
     _uifile = os.path.join(UIDIR, "brickWidget.ui")
 
-    def __init__(self, parent=None):
+    def __init__(self, mainWindow=None, parent=None):
         super(BrickWidget, self).__init__(parent=parent)
+        self.mainWindow = mainWindow
         loadUi(self._uifile, self)
         self.blueprintWidget = None
         self.initUI()
@@ -118,12 +144,6 @@ class BrickWidget(QtWidgets.QWidget):
 
     def __test(self):
         self.blueprintWidget.load(r"E:\git\brick\brick\test\templates\test2.json")
-
-    @classmethod
-    def launch(cls):
-        mui = cls()
-        mui.show()
-        return mui
 
     def initUI(self):
         self.setMinimumHeight(600)
@@ -157,10 +177,14 @@ class BrickWidget(QtWidgets.QWidget):
 
     def saveBlueprint(self):
         ui = ioDialog.SaveBlueprintDialog(self)
+        if self.mainWindow:
+            ui.setting_file_updated_signal.connect(self.mainWindow.updateRecentFileMenu)
         ui.exec_()
 
     def loadBlueprint(self):
         ui = ioDialog.LoadBlueprintDialog(self)
+        if self.mainWindow:
+            ui.setting_file_updated_signal.connect(self.mainWindow.updateRecentFileMenu)
         ui.exec_()
 
     def newBlueprint(self):

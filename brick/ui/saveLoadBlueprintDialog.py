@@ -12,6 +12,7 @@ from brick import lib
 
 UIDIR = os.path.dirname(__file__)
 
+import brick.settings as settings
 
 class DeleteButton(QtWidgets.QPushButton):
     """
@@ -143,6 +144,8 @@ class AbstractBlueprintDialog(QtWidgets.QDialog):
     """
     _uifile = os.path.join(UIDIR, "saveLoadBlueprintDialog.ui")
 
+    setting_file_updated_signal = QtCore.Signal()
+
     def __init__(self, parentDialog=None):
         super(AbstractBlueprintDialog, self).__init__()
         loadUi(self._uifile, self)
@@ -215,6 +218,10 @@ class LoadBlueprintDialog(AbstractBlueprintDialog):
 
         self.parentDialog.blueprintWidget.load(filePath)
 
+        settings.addRecentBlueprint(filePath)
+
+        self.setting_file_updated_signal.emit()
+
         self.close()
 
 
@@ -262,6 +269,8 @@ class SaveBlueprintDialog(AbstractBlueprintDialog):
             baseDir.makeDirs()
 
         log.info('saved blueprint path: {0}'.format(blueprintPath))
+        settings.addRecentBlueprint(blueprintPath)
+        self.setting_file_updated_signal.emit()
 
         self.parentDialog.blueprintWidget.save(blueprintPath, notes)
 
