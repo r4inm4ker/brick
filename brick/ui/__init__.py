@@ -1,4 +1,7 @@
-from .brick_ui import BrickUI
+from brick.lib.path import Path
+import brick
 
-__author__ = 'jharyono'
+icon_dir = Path(brick.__file__).dirname() / "ui" / "icons"
 
+from qqt import IconManager
+IconManager.addDir(icon_dir)

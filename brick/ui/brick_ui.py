@@ -20,14 +20,8 @@ from brick.ui import saveLoadBlueprintDialog as ioDialog
 from brick import settings
 
 from brick.lib.path import Path
-import brick
 
-icon_dir = Path(brick.__file__).dirname() / "ui" / "icons"
-
-from qqt import IconManager
-IconManager.addDir(icon_dir)
-
-
+from brick.ui import IconManager
 
 UIDIR = os.path.dirname(__file__)
 
@@ -56,12 +50,31 @@ class BrickUI(QtWidgets.QWidget):
 class BrickWindow(QtWidgets.QMainWindow):
     def __init__(self, parent=None):
         super(BrickWindow, self).__init__(parent=parent)
-        self.widget = BrickWidget(mainWindow=self)
-        self.widget.setContentsMargins(0, 0, 0, 0)
-        self.setCentralWidget(self.widget)
+        self.mainWidget = BrickWidget(mainWindow=self)
+        self.bluePrintWidget = self.mainWidget.blueprintWidget
+        self.blockListWidget = self.bluePrintWidget.blockListWidget
+        self.mainWidget.setContentsMargins(0, 0, 0, 0)
+        self.setCentralWidget(self.mainWidget)
         self.menuBar = None
         self._initMenuBar()
         self._initToolBar()
+        self._initPropertyDock()
+
+    def _initPropertyDock(self):
+        self.editorDock = Editor_Dock()
+        self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.editorDock)
+        self.editorWidget = self.editorDock.mainWidget
+
+        self.blockListWidget.itemSelectionChanged.connect(self.updateEditorWidget)
+
+    def updateEditorWidget(self):
+        items = self.blockListWidget.selectedItems()
+
+        self.editorWidget.clear()
+
+        if items:
+            self.editorWidget.update(items[0].widget)
+
 
     def _initMenuBar(self):
         self.menuBar = QtWidgets.QMenuBar()
@@ -70,15 +83,15 @@ class BrickWindow(QtWidgets.QMainWindow):
         self.menuBar.addMenu(menuFile)
 
         action = QtWidgets.QAction('new', self)
-        action.triggered.connect(self.widget.newBlueprint)
+        action.triggered.connect(self.mainWidget.newBlueprint)
         menuFile.addAction(action)
 
         action = QtWidgets.QAction('load...', self)
-        action.triggered.connect(self.widget.loadBlueprint)
+        action.triggered.connect(self.mainWidget.loadBlueprint)
         menuFile.addAction(action)
 
         action = QtWidgets.QAction('save...', self)
-        action.triggered.connect(self.widget.saveBlueprint)
+        action.triggered.connect(self.mainWidget.saveBlueprint)
         menuFile.addAction(action)
 
         self.recentMenu = QtWidgets.QMenu('recent blueprints', self.menuBar)
@@ -107,7 +120,7 @@ class BrickWindow(QtWidgets.QMainWindow):
 
 
     def loadBluePrintCallback(self, filePath):
-        self.widget.blueprintWidget.load(filePath)
+        self.mainWidget.blueprintWidget.load(filePath)
         settings.addRecentBlueprint(filePath)
         self.updateRecentFileMenu()
 
@@ -116,16 +129,16 @@ class BrickWindow(QtWidgets.QMainWindow):
 
         icon = IconManager.get("new.png", type="icon")
         action = toolBar.addAction(icon, "new blueprint")
-        action.triggered.connect(self.widget.newBlueprint)
+        action.triggered.connect(self.mainWidget.newBlueprint)
 
         icon = IconManager.get("open.png", type="icon")
         action = toolBar.addAction(icon, "open blueprint")
-        action.triggered.connect(self.widget.loadBlueprint)
+        action.triggered.connect(self.mainWidget.loadBlueprint)
 
 
         icon = IconManager.get("save.png", type="icon")
         action = toolBar.addAction(icon, "save blueprint")
-        action.triggered.connect(self.widget.saveBlueprint)
+        action.triggered.connect(self.mainWidget.saveBlueprint)
 
 
         self.addToolBar(toolBar)
@@ -655,7 +668,7 @@ class BaseBlockWidget(QtWidgets.QWidget):
         data = OrderedDict()
         data['type'] = self.op.__class__.__name__
         data['name'] = ""
-        data['description'] = ""
+        data['notes'] = ""
         data['attrs'] = {}
         data['inputs'] = {}
         data['active'] = self.activeCheckBox.isChecked()
@@ -734,25 +747,7 @@ class BlockWidget(BaseBlockWidget, block_widget.BlockWidget):
         op = self.op
         self.blockName.setText(op.name)
 
-        # if not hasattr(op, 'attrs') or not getattr(op, 'attrs'):
-        for fixedAttr in self.op.fixedAttrs:
-            aname, (atype, aval) = fixedAttr
-            self.attrTree.addAttr(fixedAttr)
-            if aname in op.attrs:
-                val = op.attrs.get(aname)
-                self.attrTree.setAttr(aname,val)
 
-        for key, val in op.attrs.iteritems():
-            if key not in self.attrTree.attrs():
-                attrType = type(val)
-                data = (key, (attrType, val))
-                self.attrTree.addAttr(data)
-
-
-        for key, val in op.inputs.iteritems():
-            if key not in self.attrTree.attrs():
-                data = (key, (type(val), val))
-                self.attrTree.addAttr(data)
 
     def runBlockCalled(self):
         self.runBlockSignal.emit(self.item)
@@ -762,7 +757,7 @@ class BlockWidget(BaseBlockWidget, block_widget.BlockWidget):
         data = OrderedDict()
         data['type'] = self.op.__class__.__name__
         data['name'] = self.blockName.text()
-        data['description'] = ""
+        data['notes'] = ""
 
         attrs = {}
         inputs = {}
@@ -839,7 +834,7 @@ class AttrTree(QtWidgets.QTreeWidget):
         self.addTopLevelItem(attrItem)
         attrItem.setFlags(attrItem.flags() ^ QtCore.Qt.ItemIsSelectable)
         attrItem.setWidget()
-        self._parent.sizeUp()
+        # self._parent.sizeUp()
 
     def setAttr(self, key, val):
         for item in self.allItems():
@@ -859,7 +854,7 @@ class AttrTree(QtWidgets.QTreeWidget):
         inputItem = AttrItem(inputData)
         self.addTopLevelItem(inputItem)
         inputItem.setWidget()
-        self._parent.sizeUp()
+        # self._parent.sizeUp()
 
     def removeSelectedAttr(self):
         currItem = self.currentItem()
@@ -1014,9 +1009,9 @@ class AddInputDialog(QtWidgets.QDialog):
 
         self.setModal(True)
         buttonBox = QtWidgets.QDialogButtonBox()
-        self.__addButton = buttonBox.addButton("Add", QtWidgets.QDialogButtonBox.AcceptRole)
-        self.__addButton.setEnabled(True)
-        self.__closeButton = buttonBox.addButton("Cancel", QtWidgets.QDialogButtonBox.RejectRole)
+        self.addButton = buttonBox.addButton("Add", QtWidgets.QDialogButtonBox.AcceptRole)
+        self.addButton.setEnabled(True)
+        self.closeButton = buttonBox.addButton("Cancel", QtWidgets.QDialogButtonBox.RejectRole)
 
         buttonLayout.addItem(buttonBoxSpacer)
         buttonLayout.addWidget(buttonBox)
@@ -1034,8 +1029,8 @@ class AddInputDialog(QtWidgets.QDialog):
         self.setLayout(mainLayout)
 
     def initSignals(self):
-        self.__addButton.released.connect(self._addAttr)
-        self.__closeButton.released.connect(self.close)
+        self.addButton.released.connect(self._addAttr)
+        self.closeButton.released.connect(self.close)
 
     def _addAttr(self):
         attrName = self.__attrNameInput.text()
@@ -1048,6 +1043,75 @@ class AddInputDialog(QtWidgets.QDialog):
         defaultValue = None
         self.parentWidget().addAttr((attrName, (attrType, defaultValue)))
         self.close()
+
+
+
+class Block_Editor_Widget(QtWidgets.QWidget):
+    def __init__(self, blockWidget=None, **kwargs):
+        super(Block_Editor_Widget, self).__init__(**kwargs)
+        self.blockWidget = blockWidget
+        layout = VBoxLayout(self)
+        with layout:
+            qcreate(Button, "1")
+
+    @property
+    def op(self):
+        return self.blockWidget.op
+
+    def sync_data(self):
+        pass
+
+    def clear(self):
+        layout = self.layout()
+        while layout.count() > 0:
+            item = layout.takeAt(0)
+            if item.widget():
+                item.widget().setParent(None)
+
+    def update(self, blockWidget):
+        self.blockWidget = blockWidget
+        self.attrTree = AttrTree(self)
+        self.layout().addWidget(self.attrTree)
+
+        op = self.op
+        # if not hasattr(op, 'attrs') or not getattr(op, 'attrs'):
+        for fixedAttr in self.op.fixedAttrs:
+            aname, (atype, aval) = fixedAttr
+            self.attrTree.addAttr(fixedAttr)
+            if aname in op.attrs:
+                val = op.attrs.get(aname)
+                self.attrTree.setAttr(aname, val)
+
+        for key, val in op.attrs.iteritems():
+            if key not in self.attrTree.attrs():
+                attrType = type(val)
+                data = (key, (attrType, val))
+                self.attrTree.addAttr(data)
+
+        for key, val in op.inputs.iteritems():
+            if key not in self.attrTree.attrs():
+                data = (key, (type(val), val))
+                self.attrTree.addAttr(data)
+
+
+class Property_Widget(QtWidgets.QWidget):
+    def __init__(self,*args,**kwargs):
+        super(Property_Widget, self).__init__(*args,**kwargs)
+        layout = VBoxLayout(self)
+        with layout:
+            qcreate(Button,"1")
+            qcreate(Button,"2")
+
+
+
+
+class Editor_Dock(QtWidgets.QDockWidget):
+    def __init__(self,*args,**kwargs):
+        super(Editor_Dock, self).__init__(*args,**kwargs)
+        self.setAllowedAreas(QtCore.Qt.RightDockWidgetArea)
+        self.mainWidget = Block_Editor_Widget()
+        self.setWidget(self.mainWidget)
+        self.setFloating(False)
 
 
 

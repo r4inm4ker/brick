@@ -1,5 +1,6 @@
 import os
 
+
 class BuildStatus(object):
     nothing = 0
     success = 1
@@ -7,6 +8,7 @@ class BuildStatus(object):
     next = 3
     end = 4
 
+
 BLUEPRINT_EXTENSION = '.json'
 
-ICON_DIR = os.path.join(os.path.dirname(__file__),"icons")
+ICON_DIR = os.path.join(os.path.dirname(__file__), "icons")

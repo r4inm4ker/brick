@@ -175,7 +175,7 @@ class GenericBuilder(Builder):
 
 class Block(object):
     def __init__(self):
-        self.description = ''
+        self.notes = ''
         self.attrs = {}
         self.runTimeAttrs = {}
         self._results = None
@@ -239,14 +239,14 @@ class Block(object):
         for key, val in self.attrs.iteritems():
             self.runTimeAttrs[key] = val
 
-    def setDescription(self, desc):
-        self.description = desc
+    def setNotes(self, notes):
+        self.notes = notes
 
     def dump(self):
         data = OrderedDict()
         data['type'] = self.__class__.__name__
         data['name'] = self.name
-        data['description'] = self.description
+        data['notes'] = self.notes
 
         inputDict = OrderedDict()
         for key, (nodeName, attr) in self.inputs.iteritems():
@@ -264,7 +264,7 @@ class Block(object):
 
         block = blockClass()
         block.name = data.get('name')
-        block.description = data.get('description')
+        block.notes = data.get('notes')
         block.attrs = data.get('attrs')
         block.inputs = data.get('inputs')
         block.active = data.get('active')
@@ -283,7 +283,7 @@ class Block(object):
 
     def reload(self, data):
         self.name = data.get('name')
-        self.description = data.get('description')
+        self.notes = data.get('notes')
         self.attrs = data.get('attrs')
         self.inputs = data.get('inputs',{})
         self.active = data.get('active',True)
