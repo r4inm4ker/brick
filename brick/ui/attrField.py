@@ -1,5 +1,7 @@
-from Qt import QtCore, QtWidgets, QtGui
+from qqt import QtCore, QtWidgets, QtGui
+from qqt.gui import qcreate, HBoxLayout, VBoxLayout, Button
 from brick import attrtype
+from brick.ui import IconManager
 
 class AttrField(object):
     editFinished = QtCore.Signal()
@@ -64,21 +66,20 @@ class ScriptEditor(QtWidgets.QDialog):
 
     def initUI(self):
         self.setWindowTitle('script editor')
-        layout = QtWidgets.QVBoxLayout()
-        self.setLayout(layout)
+        layout = VBoxLayout(self)
+        with layout:
+            self.editor = qcreate(QtWidgets.QPlainTextEdit)
+            with qcreate(HBoxLayout) as hlayout:
+                icon = IconManager.get("save.png",type='icon')
+                self.setBtn = qcreate(Button, 'Save', icon=icon)
+                self.cancelBtn = qcreate(Button, 'Cancel')
 
-        self.editor = QtWidgets.QPlainTextEdit()
-        layout.addWidget(self.editor)
-        layout.setStretch(layout.count() - 1, 1)
+            hlayout.setRatio(2, 1)
 
-        hori = QtWidgets.QHBoxLayout()
-        layout.addLayout(hori)
-        layout.setStretch(layout.count() - 1, 0)
+        layout.setRatio(1, 0)
 
-        self.cancelBtn = QtWidgets.QPushButton('cancel')
-        hori.addWidget(self.cancelBtn)
-        self.setBtn = QtWidgets.QPushButton('set')
-        hori.addWidget(self.setBtn)
+        self.resize(400,400)
+
 
     def initSignal(self):
         self.cancelBtn.clicked.connect(self.close)

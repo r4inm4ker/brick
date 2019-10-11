@@ -29,27 +29,35 @@ class BlockWidget(QtWidgets.QWidget):
 
                 # self.indicatorWidget.setCurrentIndex(1)
 
-                self.frame = qcreate(QtWidgets.QFrame,layoutType=VBoxLayout)
+                self.frame = qcreate(QtWidgets.QFrame,layoutType=HBoxLayout)
+                self.frame.layout().setContentsMargins(0, 0, 0, 0)
                 with self.frame.layout():
-                    self.headerWidget = qcreate(QtWidgets.QWidget,layoutType=HBoxLayout)
-                    with self.headerWidget.layout():
-                        self.activeCheckBox = qcreate(Checkbox)
-                        self.blockType = qcreate(QtWidgets.QLabel,"Block Type")
-                        self.blockName = qcreate(StringField)
-                        qcreate(Spacer)
-                        # self.annotationBtn = qcreate(Button,"?")
 
+                    self.activeCheckBox = qcreate(Checkbox)
+                    self.blockType = qcreate(QtWidgets.QLabel,"Block Type")
+                    self.blockName = qcreate(StringField)
+                    # qcreate(Spacer)
+                    # self.annotationBtn = qcreate(Button,"?")
 
+                    self.runBlockButton = qcreate(Button, ">")
 
-                    self.attrTreeLayout = qcreate(VBoxLayout)
+                    qcreate(Spacer)
+
 
                 with qcreate(VBoxLayout):
                     self.deleteButton = qcreate(Button, "x")
 
 
-                    self.runBlockButton = qcreate(Button,">")
-                    self.runBlockButton.setFixedWidth(20)
-                    self.runBlockButton.setFixedHeight(60)
+                    # self.runBlockButton = qcreate(Button,">")
+                    # self.runBlockButton.setFixedWidth(20)
+                    # self.runBlockButton.setFixedHeight(60)
 
             qcreate(SeparatorLine)
 
+        self.setEnableDisplay(True)
+
+    def setEnableDisplay(self, enabled):
+        if enabled:
+            self.setStyleSheet('')
+        else:
+            self.setStyleSheet("""QWidget {background-color:gray;}""")

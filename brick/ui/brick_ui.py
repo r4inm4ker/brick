@@ -167,7 +167,8 @@ class BrickWidget(QtWidgets.QWidget):
         self.__test()
 
     def __test(self):
-        self.blueprintWidget.load(r"E:\git\brick\brick\test\templates\test2.json")
+        pass
+        # self.blueprintWidget.load(r"E:\git\brick\brick\test\templates\debug.json")
 
     def _initUI(self):
         layout = VBoxLayout(self)
@@ -405,11 +406,11 @@ class BlueprintWidget(QtWidgets.QWidget):
         #     data = opWidget.genData()
         #     opWidget.op.reload(data)
 
-    def refreshNextBlock(self):
-        widget = self.nextWidget
-        if widget:
-            data = self.nextWidget.genData()
-            self.builder.blocks[self.nextStep].reload(data)
+    # def refreshNextBlock(self):
+    #     widget = self.nextWidget
+    #     if widget:
+    #         data = self.nextWidget.genData()
+    #         self.builder.blocks[self.nextStep].reload(data)
 
     def rewind(self):
         self.builder.reset()
@@ -436,7 +437,7 @@ class BlueprintWidget(QtWidgets.QWidget):
 
     def buildNext(self):
         self.refreshHeaderAttrs()
-        self.refreshNextBlock()
+        # self.refreshNextBlock()
         ret = self.builder.buildNext()
         self.refreshIndicator()
         if self.nextWidget:
@@ -522,10 +523,10 @@ class BlueprintWidget(QtWidgets.QWidget):
     def addBlock(self, block):
         item = BlockItem()
         if block.__class__.__name__ == 'BreakPoint':
-            item.setSizeHint(QtCore.QSize(50, 60))
+            item.setSizeHint(QtCore.QSize(50, 40))
             opWidget = BreakpointWidget(block, item)
         else:
-            item.setSizeHint(QtCore.QSize(50, 100))
+            item.setSizeHint(QtCore.QSize(50, 80))
             opWidget = BlockWidget(block, item)
             opWidget.runBlockSignal.connect(self.runItemCallback)
 
@@ -606,7 +607,8 @@ class BlockListWidget(QtWidgets.QListWidget):
 
     def __init__(self, parent=None):
         super(BlockListWidget, self).__init__(parent=parent)
-        self.setDragDropMode(QtWidgets.QAbstractItemView.InternalMove)
+        # self.setDragDropMode(self.InternalMove)
+        self.setDragDropMode(self.DragDrop)
         self.setSelectionMode(self.ExtendedSelection)
 
         self.setStyleSheet(self.stylesheet)
@@ -658,6 +660,24 @@ class BlockListWidget(QtWidgets.QListWidget):
         if indices:
             return indices[0].row()
 
+    def dropEvent( self, event ):
+        data = event.mimeData()
+        print data.formats()
+        print data.urls()
+
+        source = event.source()
+        if isinstance(source,BlockListWidget):
+            self.setDragDropMode(self.InternalMove)
+            ret = super(BlockListWidget, self).dropEvent(event)
+            self.setDragDropMode(self.DragDrop)
+            return ret
+        # urls = data.urls()
+        # if ( urls and urls[0].scheme() == 'file' ):
+        #     # for some reason, this doubles up the intro slash
+        #     filepath = str(urls[0].path())[1:]
+        #     self.setText(filepath)
+        #     self.editingFinished.emit()
+        #
 class BlockItem(QtWidgets.QListWidgetItem):
     pass
 
@@ -705,7 +725,7 @@ class HeaderWidget(QtWidgets.QWidget):
         self.clear()
         self.initAttrs(base.GenericBuilder)
 
-from brick.ui.components import block_widget
+from brick.ui.components import block_widget, breakpoint_widget
 class BaseBlockWidget(QtWidgets.QWidget):
     itemDeleted = QtCore.Signal(object)
 
@@ -740,23 +760,14 @@ class BaseBlockWidget(QtWidgets.QWidget):
     def switchActiveState(self):
         currState = self.activeCheckBox.isChecked()
 
-        if currState:
-            self.setStyleSheet("")
-        else:
-            self.setStyleSheet("""QWidget {background-color:gray;}""")
+        self.setEnableDisplay(currState)
 
 
-class BreakpointWidget(BaseBlockWidget):
-    _uifile = os.path.join(UIDIR, "breakpoint.ui")
-
+class BreakpointWidget(BaseBlockWidget, breakpoint_widget.BreakPointWidget):
     def __init__(self, op, item, parent=None):
         super(BreakpointWidget, self).__init__(op, item, parent=parent)
-        loadUi(self._uifile, self)
-
         self.setContentsMargins(0, 0, 0, 0)
-
         self.op = op
-
         self.initSignals()
 
     def switchIndicator(self, state):
