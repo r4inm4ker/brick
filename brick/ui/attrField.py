@@ -2,23 +2,24 @@ from Qt import QtCore, QtWidgets
 from brick import attrtype
 
 class AttrField(object):
-    fieldChanged = QtCore.Signal()
+    editFinished = QtCore.Signal()
 
     @property
     def sizePolicy(self):
         return QtCore.QSizePolicy(QtCore.QSizePolicy.Preferred, QtCore.QSizePolicy.Fixed)
 
-    def emitFieldChanged(self):
-        self.fieldChanged.emit()
+    def emitSignal(self):
+        self.editFinished.emit()
 
 
 class StringField(AttrField, QtWidgets.QLineEdit):
     def __init__(self, parent=None):
         super(StringField, self).__init__(parent)
-        self.textEdited.connect(self.emitFieldChanged)
+        self.editingFinished.connect(self.emitSignal)
 
     def setValue(self, value):
         self.setText(str(value))
+        self.emitSignal()
 
     def getValue(self):
         return self.text()
@@ -41,6 +42,7 @@ class ScriptField(AttrField, QtWidgets.QWidget):
     def setValue(self, value):
         setVal = attrtype.Script(value.replace('\n', r'\n'))
         self.scriptField.setText(setVal)
+        self.emitSignal()
 
     def openScriptEditor(self):
         currentScript = self.scriptField.text()
@@ -101,7 +103,7 @@ class IntField(AttrField, QtWidgets.QLineEdit):
         self.setMaximumWidth(90)
         self._validator = QtWidgets.QIntValidator()
         self.setValidator(self._validator)
-        self.textEdited.connect(self.emitFieldChanged)
+        self.editingFinished.connect(self.emitSignal)
 
     def setValue(self, value):
         try:
@@ -110,6 +112,7 @@ class IntField(AttrField, QtWidgets.QLineEdit):
             value = 0
         finally:
             self.setText(str(value))
+            self.emitSignal()
 
     def getValue(self):
         text = self.text()
@@ -161,6 +164,7 @@ class BoolField(AttrField, QtWidgets.QLineEdit):
                 self.setText(self.False_)
         except ValueError:
             self.setText(self.False_)
+        self.emitSignal()
 
 class FloatField(AttrField, QtWidgets.QLineEdit):
     def __init__(self, parent=None):
@@ -168,7 +172,7 @@ class FloatField(AttrField, QtWidgets.QLineEdit):
         self.setMaximumWidth(90)
         self._validator = QtWidgets.QDoubleValidator()
         self.setValidator(self._validator)
-        self.textEdited.connect(self.emitFieldChanged)
+        self.editingFinished.connect(self.emitSignal)
 
     def setValue(self, value):
         try:
@@ -197,7 +201,7 @@ class ChooserField(AttrField, QtWidgets.QComboBox):
         self.reloadItems()
 
     def _setupSignal(self):
-        self.currentIndexChanged.connect(self.emitFieldChanged)
+        self.currentIndexChanged.connect(self.emitSignal)
 
     def reloadItems(self):
         while self.count() > 0:
@@ -252,9 +256,10 @@ class TemplateField(QtWidgets.QWidget):
 
     def setValue(self,value):
         self.chooser.setValue(value)
-
+        self.emitSignal()
 
 class OpInputField(AttrField, QtWidgets.QWidget):
+
     def __init__(self, parent=None):
         super(OpInputField, self).__init__(parent)
         layout = QtWidgets.QHBoxLayout()
@@ -276,6 +281,7 @@ class OpInputField(AttrField, QtWidgets.QWidget):
         opVal, attrVal = value
         self.opField.setText(opVal)
         self.attrField.setText(attrVal)
+        self.emitSignal()
 
 
 class AttrTypeChooser(ChooserField):

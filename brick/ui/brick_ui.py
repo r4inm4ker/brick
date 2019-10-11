@@ -26,6 +26,10 @@ from brick.ui import IconManager
 UIDIR = os.path.dirname(__file__)
 
 
+class Main_UI(object):
+    ui = None
+
+
 class BrickUI(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super(BrickUI, self).__init__(parent=parent)
@@ -50,6 +54,7 @@ class BrickUI(QtWidgets.QWidget):
 class BrickWindow(QtWidgets.QMainWindow):
     def __init__(self, parent=None):
         super(BrickWindow, self).__init__(parent=parent)
+        Main_UI.ui = self
         self.mainWidget = BrickWidget(mainWindow=self)
         self.bluePrintWidget = self.mainWidget.blueprintWidget
         self.blockListWidget = self.bluePrintWidget.blockListWidget
@@ -68,12 +73,16 @@ class BrickWindow(QtWidgets.QMainWindow):
         self.blockListWidget.itemSelectionChanged.connect(self.updateEditorWidget)
 
     def updateEditorWidget(self):
+        if self.editorWidget.blockWidget:
+            self.editorWidget.blockWidget.syncData()
+
         items = self.blockListWidget.selectedItems()
 
         self.editorWidget.clear()
 
         if items:
-            self.editorWidget.update(items[0].widget)
+            item = items[0]
+            self.editorWidget.update(item.widget)
 
 
     def _initMenuBar(self):
@@ -87,11 +96,11 @@ class BrickWindow(QtWidgets.QMainWindow):
         menuFile.addAction(action)
 
         action = QtWidgets.QAction('load...', self)
-        action.triggered.connect(self.mainWidget.loadBlueprint)
+        action.triggered.connect(self.mainWidget.loadBlueprintDialogCalled)
         menuFile.addAction(action)
 
         action = QtWidgets.QAction('save...', self)
-        action.triggered.connect(self.mainWidget.saveBlueprint)
+        action.triggered.connect(self.mainWidget.saveBlueprintDialogCalled)
         menuFile.addAction(action)
 
         self.recentMenu = QtWidgets.QMenu('recent blueprints', self.menuBar)
@@ -115,14 +124,19 @@ class BrickWindow(QtWidgets.QMainWindow):
             self.recentMenu.clear()
             for filePath in recentBluePrints:
                 action = QtWidgets.QAction(filePath,self)
-                action.triggered.connect(partial(self.loadBluePrintCallback,filePath))
+                action.triggered.connect(partial(self.loadBluePrint,filePath))
                 self.recentMenu.addAction(action)
 
 
-    def loadBluePrintCallback(self, filePath):
+    def loadBluePrint(self, filePath):
         self.mainWidget.blueprintWidget.load(filePath)
         settings.addRecentBlueprint(filePath)
         self.updateRecentFileMenu()
+
+    def saveBluePrint(self, (path, notes)):
+        if self.editorWidget.blockWidget:
+            self.editorWidget.blockWidget.syncData()
+        self.blueprintWidget.builder.saveBlueprint(path, notes)
 
     def _initToolBar(self):
         toolBar = QtWidgets.QToolBar()
@@ -133,12 +147,12 @@ class BrickWindow(QtWidgets.QMainWindow):
 
         icon = IconManager.get("open.png", type="icon")
         action = toolBar.addAction(icon, "open blueprint")
-        action.triggered.connect(self.mainWidget.loadBlueprint)
+        action.triggered.connect(self.mainWidget.loadBlueprintDialogCalled)
 
 
         icon = IconManager.get("save.png", type="icon")
         action = toolBar.addAction(icon, "save blueprint")
-        action.triggered.connect(self.mainWidget.saveBlueprint)
+        action.triggered.connect(self.mainWidget.saveBlueprintDialogCalled)
 
 
         self.addToolBar(toolBar)
@@ -188,17 +202,24 @@ class BrickWidget(QtWidgets.QWidget):
 
         self.blueprintWidget.addBlock(op)
 
-    def saveBlueprint(self):
+    def saveBlueprintDialogCalled(self):
         ui = ioDialog.SaveBlueprintDialog(self)
-        if self.mainWindow:
-            ui.setting_file_updated_signal.connect(self.mainWindow.updateRecentFileMenu)
+        ui.setting_file_updated_signal.connect(self.mainWindow.updateRecentFileMenu)
+        ui.saveSignalled.connect(self.mainWindow.saveBluePrint)
         ui.exec_()
 
-    def loadBlueprint(self):
+
+
+    def loadBlueprintDialogCalled(self):
         ui = ioDialog.LoadBlueprintDialog(self)
-        if self.mainWindow:
-            ui.setting_file_updated_signal.connect(self.mainWindow.updateRecentFileMenu)
+
+        ui.setting_file_updated_signal.connect(self.mainWindow.updateRecentFileMenu)
+        ui.load_signal.connect(self.mainWindow.loadBluePrint)
+
         ui.exec_()
+
+
+
 
     def newBlueprint(self):
         confirm = QtWidgets.QMessageBox.question(None,
@@ -350,10 +371,10 @@ class BlueprintWidget(QtWidgets.QWidget):
             if idx == self.nextStep:
                 return widget
 
-    def refreshAllBlocks(self):
-        for opWidget in self.blockListWidget.opWidgets:
-            data = opWidget.genData()
-            opWidget.op.reload(data)
+    # def refreshAllBlocks(self):
+        # for opWidget in self.blockListWidget.opWidgets:
+        #     data = opWidget.genData()
+        #     opWidget.op.reload(data)
 
     def refreshNextBlock(self):
         widget = self.nextWidget
@@ -424,11 +445,11 @@ class BlueprintWidget(QtWidgets.QWidget):
 
     def refreshBuilder(self):
         self.refreshHeaderAttrs()
-        self.refreshAllBlocks()
+        # self.refreshAllBlocks()
 
-    def save(self, blueprintPath, notes=""):
-        self.refreshBuilder()
-        self.builder.saveBlueprint(blueprintPath, notes=notes)
+    # def save(self, blueprintPath, notes=""):
+    #     self.refreshBuilder()
+    #     self.builder.saveBlueprint(blueprintPath, notes=notes)
 
     def load(self, blueprintPath):
         self.clear()
@@ -557,6 +578,7 @@ class BlockListWidget(QtWidgets.QListWidget):
     def __init__(self, parent=None):
         super(BlockListWidget, self).__init__(parent=parent)
         self.setDragDropMode(QtWidgets.QAbstractItemView.InternalMove)
+        self.setSelectionMode(self.ExtendedSelection)
 
         self.setStyleSheet(self.stylesheet)
         self.setAlternatingRowColors(True)
@@ -664,16 +686,16 @@ class BaseBlockWidget(QtWidgets.QWidget):
         self.item = item
         self._headerStyleSheet = None
 
-    def createOp(self):
-        data = OrderedDict()
-        data['type'] = self.op.__class__.__name__
-        data['name'] = ""
-        data['notes'] = ""
-        data['attrs'] = {}
-        data['inputs'] = {}
-        data['active'] = self.activeCheckBox.isChecked()
+    # def createOp(self):
+    #     data = OrderedDict()
+    #     data['type'] = self.op.__class__.__name__
+    #     data['name'] = ""
+    #     data['notes'] = ""
+    #     data['attrs'] = {}
+    #     data['inputs'] = {}
+    #     data['active'] = self.activeCheckBox.isChecked()
 
-        return self.op.load(data)
+        # return self.op.load(data)
 
     def initSignals(self):
         self.deleteButton.clicked.connect(self.delete)
@@ -711,7 +733,7 @@ class BreakpointWidget(BaseBlockWidget):
     def switchIndicator(self, state):
         return
 
-    def genData(self):
+    def syncData(self):
         data = OrderedDict()
         data['type'] = self.op.__class__.__name__
         data['active'] = self.activeCheckBox.isChecked()
@@ -723,14 +745,15 @@ class BlockWidget(BaseBlockWidget, block_widget.BlockWidget):
     def __init__(self, op, item, parent=None):
         super(BlockWidget, self).__init__(op, item, parent=parent)
         self.setContentsMargins(0, 0, 0, 0)
+        self.editorWidget=None
 
         self.op = op
 
         self.blockType.setText(op.__class__.__name__)
 
-        self.attrTree = AttrTree(self)
+        # self.attrTree = AttrTree(self)
 
-        self.attrTreeLayout.addWidget(self.attrTree)
+        # self.attrTreeLayout.addWidget(self.attrTree)
 
         self.initSignals()
         self.loadData()
@@ -748,41 +771,35 @@ class BlockWidget(BaseBlockWidget, block_widget.BlockWidget):
         self.blockName.setText(op.name)
 
 
-
     def runBlockCalled(self):
         self.runBlockSignal.emit(self.item)
 
 
-    def genData(self):
+    def syncData(self):
         data = OrderedDict()
         data['type'] = self.op.__class__.__name__
         data['name'] = self.blockName.text()
         data['notes'] = ""
 
-        attrs = {}
-        inputs = {}
-        for idx in range(self.attrTree.topLevelItemCount()):
-            item = self.attrTree.topLevelItem(idx)
+        attrs = OrderedDict()
+        inputs = OrderedDict()
 
-            name = item.getName()
-            value = item.getValue()
+        data = self.editorWidget.getData()
 
-            if item.attrType == attrtype.Input:
+        for key,val in data.get("inputs",{}).items():
+            inputs[key] = val
 
-                inputs[name] = value
-
-            else:
-                attrs[name] = value
+        for key,val in data.get("attrs",{}).items():
+            attrs[key] = val
 
         data['attrs'] = attrs
-
         data['inputs'] = inputs
         data['active'] = self.activeCheckBox.isChecked()
-        return data
+        self.op.reload(data)
 
-    def createOp(self):
-        data = self.genData()
-        return self.op.load(data)
+    # def createOp(self):
+    #     data = self.genData()
+    #     return self.op.load(data)
 
     def sizeUp(self):
         item = self.item
@@ -901,6 +918,8 @@ class AttrItem(QtWidgets.QTreeWidgetItem):
         self.fieldWidget = attrField.AttrFieldMaker.create(attrType)
         if defaultValue is not None and defaultValue != '':
             self.fieldWidget.setValue(defaultValue)
+
+        self.fieldWidget.editFinished.connect(Main_UI.ui.editorWidget.syncData)
 
     @property
     def attrName(self):
@@ -1058,8 +1077,9 @@ class Block_Editor_Widget(QtWidgets.QWidget):
     def op(self):
         return self.blockWidget.op
 
-    def sync_data(self):
-        pass
+    def syncData(self):
+        if self.blockWidget:
+            self.blockWidget.syncData()
 
     def clear(self):
         layout = self.layout()
@@ -1067,9 +1087,11 @@ class Block_Editor_Widget(QtWidgets.QWidget):
             item = layout.takeAt(0)
             if item.widget():
                 item.widget().setParent(None)
+        self.blockWidget = None
 
     def update(self, blockWidget):
         self.blockWidget = blockWidget
+        self.blockWidget.editorWidget = self
         self.attrTree = AttrTree(self)
         self.layout().addWidget(self.attrTree)
 
@@ -1093,6 +1115,24 @@ class Block_Editor_Widget(QtWidgets.QWidget):
                 data = (key, (type(val), val))
                 self.attrTree.addAttr(data)
 
+    def getData(self):
+        data = {}
+        data['attrs'] = OrderedDict()
+        data['inputs'] = OrderedDict()
+        if self.attrTree:
+            for idx in range(self.attrTree.topLevelItemCount()):
+                item = self.attrTree.topLevelItem(idx)
+
+                name = item.getName()
+                value = item.getValue()
+
+                if item.attrType == attrtype.Input:
+
+                    data['inputs'][name] = value
+
+                else:
+                    data['attrs'][name] = value
+        return data
 
 class Property_Widget(QtWidgets.QWidget):
     def __init__(self,*args,**kwargs):

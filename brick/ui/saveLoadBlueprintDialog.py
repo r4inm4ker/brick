@@ -189,6 +189,7 @@ class AbstractBlueprintDialog(QtWidgets.QDialog):
 
 
 class LoadBlueprintDialog(AbstractBlueprintDialog):
+    load_signal = QtCore.Signal(unicode)
     def initUI(self):
         super(LoadBlueprintDialog, self).initUI()
         self.blueprintNameLabel.setParent(None)
@@ -216,16 +217,20 @@ class LoadBlueprintDialog(AbstractBlueprintDialog):
 
         filePath = baseDir / fileName
 
-        self.parentDialog.blueprintWidget.load(filePath)
 
         settings.addRecentBlueprint(filePath)
 
         self.setting_file_updated_signal.emit()
 
+        self.load_signal.emit(filePath)
+
+
         self.close()
 
 
 class SaveBlueprintDialog(AbstractBlueprintDialog):
+    saveSignalled = QtCore.Signal(tuple)
+
     def __init__(self, parentDialog):
         super(SaveBlueprintDialog, self).__init__(parentDialog=parentDialog)
 
@@ -271,12 +276,8 @@ class SaveBlueprintDialog(AbstractBlueprintDialog):
         log.info('saved blueprint path: {0}'.format(blueprintPath))
         settings.addRecentBlueprint(blueprintPath)
         self.setting_file_updated_signal.emit()
+        self.saveSignalled.emit((blueprintPath, notes))
+        # self.parentDialog.blueprintWidget.save(blueprintPath, notes)
 
-        self.parentDialog.blueprintWidget.save(blueprintPath, notes)
-
-        confirmBox = QtWidgets.QMessageBox()
-        confirmBox.setWindowTitle('Blueprint Saved')
-        confirmBox.setText("blueprint {0} saved".format(blueprintName))
-        confirmBox.exec_()
 
         self.close()
