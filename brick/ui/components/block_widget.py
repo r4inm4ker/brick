@@ -33,11 +33,12 @@ class BlockWidget(QtWidgets.QWidget):
                 with self.frame.layout():
                     self.headerWidget = qcreate(QtWidgets.QWidget,layoutType=HBoxLayout)
                     with self.headerWidget.layout():
+                        self.activeCheckBox = qcreate(Checkbox)
                         self.blockType = qcreate(QtWidgets.QLabel,"Block Type")
                         self.blockName = qcreate(StringField)
                         qcreate(Spacer)
-                        self.annotationBtn = qcreate(Button,"?")
-                        self.activeCheckBox = qcreate(Checkbox,label="active")
+                        # self.annotationBtn = qcreate(Button,"?")
+
 
 
                     self.attrTreeLayout = qcreate(VBoxLayout)

@@ -2,7 +2,7 @@ import os
 from collections import OrderedDict
 from functools import partial
 from qqt import QtCore, QtGui, QtWidgets, QtCompat
-from qqt.gui import qcreate, VBoxLayout, HBoxLayout, Button, ContextMenu
+from qqt.gui import qcreate, VBoxLayout, HBoxLayout, Button, ContextMenu, Splitter, Spacer
 
 loadUi = QtCompat.loadUi
 
@@ -73,8 +73,8 @@ class BrickWindow(QtWidgets.QMainWindow):
         self.blockListWidget.itemSelectionChanged.connect(self.updateEditorWidget)
 
     def updateEditorWidget(self):
-        if self.editorWidget.blockWidget:
-            self.editorWidget.blockWidget.syncData()
+        # if self.editorWidget.blockWidget:
+        #     self.editorWidget.blockWidget.syncData()
 
         items = self.blockListWidget.selectedItems()
 
@@ -134,9 +134,9 @@ class BrickWindow(QtWidgets.QMainWindow):
         self.updateRecentFileMenu()
 
     def saveBluePrint(self, (path, notes)):
-        if self.editorWidget.blockWidget:
-            self.editorWidget.blockWidget.syncData()
-        self.blueprintWidget.builder.saveBlueprint(path, notes)
+        # if self.editorWidget.blockWidget:
+        #     self.editorWidget.blockWidget.syncData()
+        self.mainWidget.blueprintWidget.builder.saveBlueprint(path, notes)
 
     def _initToolBar(self):
         toolBar = QtWidgets.QToolBar()
@@ -158,40 +158,61 @@ class BrickWindow(QtWidgets.QMainWindow):
         self.addToolBar(toolBar)
 
 class BrickWidget(QtWidgets.QWidget):
-    _uifile = os.path.join(UIDIR, "brickWidget.ui")
-
     def __init__(self, mainWindow=None, parent=None):
         super(BrickWidget, self).__init__(parent=parent)
         self.mainWindow = mainWindow
-        loadUi(self._uifile, self)
         self.blueprintWidget = None
-        self.initUI()
-        self.populateBlocks()
+        self._initUI()
+        # self.populateBlocks()
         self.__test()
 
     def __test(self):
         self.blueprintWidget.load(r"E:\git\brick\brick\test\templates\test2.json")
 
-    def initUI(self):
-        self.setMinimumHeight(600)
-        self.blueprintWidget = BlueprintWidget()
-        self.blueprintLayout.addWidget(self.blueprintWidget)
-        self.splitter.setSizes([0, 1])
+    def _initUI(self):
+        layout = VBoxLayout(self)
+        with layout:
+            self.hsplitter = qcreate(Splitter)
+            with self.hsplitter:
+                # left
+                self.blockMenuWidget = qcreate(QtWidgets.QWidget,layoutType=VBoxLayout)
+                self.blockMenuWidget.setMaximumWidth(200)
+                self.blockMenuLayout = self.blockMenuWidget.layout()
+                self._populateBlocks()
 
-    def populateBlocks(self):
+                # right
+                self.blueprintWidget = qcreate(BlueprintWidget)
+            self.hsplitter.setSizes([1, 100])
+
+    def _populateBlocks(self):
         blockMap = lib.collectBlocksByCategory()
 
-        for category, opclasses in blockMap.items():
-            gbox = QtWidgets.QGroupBox()
-            layout = QtWidgets.QVBoxLayout()
-            gbox.setLayout(layout)
-            gbox.setTitle(category)
-            self.blockMenuLayout.addWidget(gbox)
-
-            for opcls in opclasses:
-                btn = QtWidgets.QPushButton(opcls.__name__)
-                layout.addWidget(btn)
-                btn.clicked.connect(partial(self.addBlock, opcls.__name__))
+        with self.blockMenuLayout:
+            qcreate(Spacer, mode="vertical")
+            for category, opclasses in blockMap.items():
+                gbox = qcreate(QtWidgets.QGroupBox, layoutType=VBoxLayout)
+                gbox.setTitle(category)
+                with gbox.layout():
+                    lwidget = qcreate(BlockMenuListWidget)
+                    for opcls in opclasses:
+                        icon = IconManager.get(opcls.ui_icon_name,type="icon")
+                        item = QtWidgets.QListWidgetItem(icon, opcls.__name__)
+                        item.setSizeHint(QtCore.QSize(100,30))
+                        lwidget.addItem(item)
+                        # btn = QtWidgets.QPushButton(opcls.__name__)
+                        # layout.addWidget(btn)
+                        # btn.clicked.connect(partial(self.addBlock, opcls.__name__))
+            qcreate(Spacer, mode="vertical")
+            # gbox = QtWidgets.QGroupBox()
+            # layout = QtWidgets.QVBoxLayout()
+            # gbox.setLayout(layout)
+            # gbox.setTitle(category)
+            # self.blockMenuLayout.addWidget(gbox)
+            #
+            # for opcls in opclasses:
+            #     btn = QtWidgets.QPushButton(opcls.__name__)
+            #     layout.addWidget(btn)
+            #     btn.clicked.connect(partial(self.addBlock, opcls.__name__))
 
     def addBlock(self, opType):
         blockCls = lib.getBlockClassByName(opType)
@@ -246,6 +267,14 @@ class BrickWidget(QtWidgets.QWidget):
             sui = ioDialog.SaveBlueprintDialog(self)
             sui.exec_()
             super(BrickWidget, self).closeEvent(*args, **kwargs)
+
+
+class BlockMenuListWidget(QtWidgets.QListWidget):
+    def __init__(self,*args,**kwargs):
+        super(BlockMenuListWidget, self).__init__(*args,**kwargs)
+        self.setAlternatingRowColors(True)
+        self.setDragEnabled(True)
+        self.setDragDropMode(self.DragOnly)
 
 
 class BlueprintWidget(QtWidgets.QWidget):
@@ -496,7 +525,7 @@ class BlueprintWidget(QtWidgets.QWidget):
             item.setSizeHint(QtCore.QSize(50, 60))
             opWidget = BreakpointWidget(block, item)
         else:
-            item.setSizeHint(QtCore.QSize(50, 130))
+            item.setSizeHint(QtCore.QSize(50, 100))
             opWidget = BlockWidget(block, item)
             opWidget.runBlockSignal.connect(self.runItemCallback)
 
@@ -585,9 +614,10 @@ class BlockListWidget(QtWidgets.QListWidget):
 
         self.contextMenu = ContextMenu(self)
 
-        self.contextMenu.addCommand("edit annotation", self.editAnnotationCallback)
-        self.contextMenu.addSeparator()
-        self.contextMenu.addCommand("start from here", self.setNextToSelected)
+        # self.contextMenu.addCommand("edit annotation", self.editAnnotationCallback)
+        # self.contextMenu.addSeparator()
+        icon = IconManager.get("start_from_here.png",type="icon")
+        self.contextMenu.addCommand("start from here", self.setNextToSelected, icon=icon)
 
 
         self._currItemRow = None
@@ -629,8 +659,7 @@ class BlockListWidget(QtWidgets.QListWidget):
             return indices[0].row()
 
 class BlockItem(QtWidgets.QListWidgetItem):
-    def sizeUp(self):
-        pass
+    pass
 
 
 class HeaderWidget(QtWidgets.QWidget):
@@ -781,20 +810,17 @@ class BlockWidget(BaseBlockWidget, block_widget.BlockWidget):
         data['name'] = self.blockName.text()
         data['notes'] = ""
 
-        attrs = OrderedDict()
-        inputs = OrderedDict()
 
-        data = self.editorWidget.getData()
+        editorData = self.editorWidget.getData()
 
-        for key,val in data.get("inputs",{}).items():
-            inputs[key] = val
+        for dataName, dataValue in editorData.items():
+            data[dataName] = dataValue
 
-        for key,val in data.get("attrs",{}).items():
-            attrs[key] = val
 
-        data['attrs'] = attrs
-        data['inputs'] = inputs
         data['active'] = self.activeCheckBox.isChecked()
+
+        print data
+
         self.op.reload(data)
 
     # def createOp(self):
@@ -1079,6 +1105,7 @@ class Block_Editor_Widget(QtWidgets.QWidget):
 
     def syncData(self):
         if self.blockWidget:
+            print "HERER"
             self.blockWidget.syncData()
 
     def clear(self):
@@ -1096,6 +1123,10 @@ class Block_Editor_Widget(QtWidgets.QWidget):
         self.layout().addWidget(self.attrTree)
 
         op = self.op
+
+        print "ZZZ"
+        print self.op.attrs.items()
+
         # if not hasattr(op, 'attrs') or not getattr(op, 'attrs'):
         for fixedAttr in self.op.fixedAttrs:
             aname, (atype, aval) = fixedAttr
@@ -1104,7 +1135,9 @@ class Block_Editor_Widget(QtWidgets.QWidget):
                 val = op.attrs.get(aname)
                 self.attrTree.setAttr(aname, val)
 
-        for key, val in op.attrs.iteritems():
+        for key, val in op.attrs.items():
+            print "CC"
+            print key, val
             if key not in self.attrTree.attrs():
                 attrType = type(val)
                 data = (key, (attrType, val))

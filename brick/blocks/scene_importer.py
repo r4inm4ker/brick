@@ -2,6 +2,7 @@ from brick.base import Generic
 
 class MayaSceneImporter(Generic):
     ui_order = 030
+    ui_icon_name = "import.png"
     fixedAttrs = (('sceneFile', (str, '')),)
 
     def _execute(self):

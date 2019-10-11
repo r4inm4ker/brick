@@ -1,4 +1,4 @@
-from Qt import QtCore, QtWidgets
+from Qt import QtCore, QtWidgets, QtGui
 from brick import attrtype
 
 class AttrField(object):
@@ -19,7 +19,6 @@ class StringField(AttrField, QtWidgets.QLineEdit):
 
     def setValue(self, value):
         self.setText(str(value))
-        self.emitSignal()
 
     def getValue(self):
         return self.text()
@@ -42,7 +41,7 @@ class ScriptField(AttrField, QtWidgets.QWidget):
     def setValue(self, value):
         setVal = attrtype.Script(value.replace('\n', r'\n'))
         self.scriptField.setText(setVal)
-        self.emitSignal()
+
 
     def openScriptEditor(self):
         currentScript = self.scriptField.text()
@@ -94,6 +93,8 @@ class ScriptEditor(QtWidgets.QDialog):
         convertedScript = attrtype.Script(currentScript.replace('\n', r'\n'))
 
         self._parent.scriptField.setText(convertedScript)
+        self._parent.emitSignal()
+
         self.close()
 
 
@@ -101,7 +102,7 @@ class IntField(AttrField, QtWidgets.QLineEdit):
     def __init__(self, parent=None):
         super(IntField, self).__init__(parent)
         self.setMaximumWidth(90)
-        self._validator = QtWidgets.QIntValidator()
+        self._validator = QtGui.QIntValidator()
         self.setValidator(self._validator)
         self.editingFinished.connect(self.emitSignal)
 
@@ -112,7 +113,6 @@ class IntField(AttrField, QtWidgets.QLineEdit):
             value = 0
         finally:
             self.setText(str(value))
-            self.emitSignal()
 
     def getValue(self):
         text = self.text()
@@ -170,7 +170,7 @@ class FloatField(AttrField, QtWidgets.QLineEdit):
     def __init__(self, parent=None):
         super(FloatField, self).__init__(parent)
         self.setMaximumWidth(90)
-        self._validator = QtWidgets.QDoubleValidator()
+        self._validator = QtGui.QDoubleValidator()
         self.setValidator(self._validator)
         self.editingFinished.connect(self.emitSignal)
 
@@ -201,7 +201,7 @@ class ChooserField(AttrField, QtWidgets.QComboBox):
         self.reloadItems()
 
     def _setupSignal(self):
-        self.currentIndexChanged.connect(self.emitSignal)
+        self.activated.connect(self.emitSignal)
 
     def reloadItems(self):
         while self.count() > 0:
@@ -256,7 +256,6 @@ class TemplateField(QtWidgets.QWidget):
 
     def setValue(self,value):
         self.chooser.setValue(value)
-        self.emitSignal()
 
 class OpInputField(AttrField, QtWidgets.QWidget):
 
@@ -281,7 +280,6 @@ class OpInputField(AttrField, QtWidgets.QWidget):
         opVal, attrVal = value
         self.opField.setText(opVal)
         self.attrField.setText(attrVal)
-        self.emitSignal()
 
 
 class AttrTypeChooser(ChooserField):

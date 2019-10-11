@@ -4,6 +4,7 @@ from brick.base import Generic
 
 class ScriptBlock(Generic):
     ui_order = 010
+    ui_icon_name = "python_script.svg"
     fixedAttrs = (('func', (Script, '')),)
 
     def _execute(self):

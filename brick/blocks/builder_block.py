@@ -8,6 +8,7 @@ class BuildError(Exception):
 
 class BuilderBlock(Generic):
     ui_order = 020
+    ui_icon_name = "generic_block.png"
     fixedAttrs = (('type', (str, 'GenericBuilder')),
                   ('blueprint', (str, ''))
     )
