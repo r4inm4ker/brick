@@ -132,6 +132,7 @@ class BrickWindow(QtWidgets.QMainWindow):
         self.mainWidget.blueprintWidget.load(filePath)
         settings.addRecentBlueprint(filePath)
         self.updateRecentFileMenu()
+        self.blockListWidget.scrollToTop()
 
     def saveBluePrint(self, (path, notes)):
         # if self.editorWidget.blockWidget:
@@ -292,7 +293,11 @@ class BlueprintWidget(QtWidgets.QWidget):
         layout = VBoxLayout(self)
         with layout:
             self.headerWidget = qcreate(HeaderWidget)
-            self.blockMenu = qcreate(BlockMenuWidget,self)
+            # self.blockMenu = qcreate(BlockMenuWidget,self)
+
+            label = qcreate(QtWidgets.QLabel,"Blueprint: ")
+            label.setAlignment(QtCore.Qt.AlignHCenter)
+
             self.blockListWidget = qcreate(BlockListWidget, blueprintWidget=self)
             with qcreate(HBoxLayout):
                 icon = IconManager.get("rewind.png", type="icon")
@@ -980,8 +985,6 @@ class Block_Editor_Widget(QtWidgets.QWidget):
         super(Block_Editor_Widget, self).__init__(**kwargs)
         self.blockWidget = blockWidget
         layout = VBoxLayout(self)
-        with layout:
-            qcreate(Button, "1")
 
     @property
     def block(self):
@@ -1046,16 +1049,6 @@ class Block_Editor_Widget(QtWidgets.QWidget):
                 else:
                     data['attrs'][name] = value
         return data
-
-class Property_Widget(QtWidgets.QWidget):
-    def __init__(self,*args,**kwargs):
-        super(Property_Widget, self).__init__(*args,**kwargs)
-        layout = VBoxLayout(self)
-        with layout:
-            qcreate(Button,"1")
-            qcreate(Button,"2")
-
-
 
 
 class Editor_Dock(QtWidgets.QDockWidget):

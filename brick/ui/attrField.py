@@ -2,6 +2,7 @@ from qqt import QtCore, QtWidgets, QtGui
 from qqt.gui import qcreate, HBoxLayout, VBoxLayout, Button
 from brick import attrtype
 from brick.ui import IconManager
+from brick.ui.components.script_editor import ScriptEditor
 
 class AttrField(object):
     editFinished = QtCore.Signal()
@@ -56,47 +57,7 @@ class ScriptField(AttrField, QtWidgets.QWidget):
         return attrtype.Script(val.replace(r'\n', '\n'))
 
 
-class ScriptEditor(QtWidgets.QDialog):
-    def __init__(self, currentScript, parent):
-        super(ScriptEditor, self).__init__()
-        self._parent = parent
-        self.initUI()
-        self.initSignal()
-        self.loadScript(currentScript)
 
-    def initUI(self):
-        self.setWindowTitle('script editor')
-        layout = VBoxLayout(self)
-        with layout:
-            self.editor = qcreate(QtWidgets.QPlainTextEdit)
-            with qcreate(HBoxLayout) as hlayout:
-                icon = IconManager.get("save.png",type='icon')
-                self.setBtn = qcreate(Button, 'Save', icon=icon)
-                self.cancelBtn = qcreate(Button, 'Cancel')
-
-            hlayout.setRatio(2, 1)
-
-        layout.setRatio(1, 0)
-
-        self.resize(400,400)
-
-
-    def initSignal(self):
-        self.cancelBtn.clicked.connect(self.close)
-        self.setBtn.clicked.connect(self.setScript)
-
-    def loadScript(self, script):
-        self.editor.setPlainText(script)
-
-    def setScript(self):
-        currentScript = self.editor.toPlainText()
-
-        convertedScript = attrtype.Script(currentScript.replace('\n', r'\n'))
-
-        self._parent.scriptField.setText(convertedScript)
-        self._parent.emitSignal()
-
-        self.close()
 
 
 class IntField(AttrField, QtWidgets.QLineEdit):
