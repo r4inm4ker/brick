@@ -196,11 +196,11 @@ class Block(object):
         try:
             self.ingestInputs()
             self.ingestAttrs()
-            log.info("{0}: start running...".format(self._name))
+            log.debug("{0}: start running...".format(self._name))
             stime = time.time()
             self._execute()
             etime = time.time()
-            log.info("{0}: finished. consumed {1} s".format(self._name, etime - stime))
+            log.debug("{0}: finished. consumed {1} s".format(self._name, etime - stime))
             self.buildStatus = BuildStatus.success
         except Exception:
             traceStr = '\n'.join(traceback.format_exception(*sys.exc_info()))

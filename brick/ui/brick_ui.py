@@ -282,7 +282,6 @@ class BlockMenuListWidget(QtWidgets.QListWidget):
     def mousePressEvent(self, event, *args, **kwargs):
         widget = Main_UI.ui.blockListWidget
         Main_UI.ui.blockListWidget.setDragDropMode(widget.DragDrop)
-        print "PRESS"
 
         return super(BlockMenuListWidget, self).mousePressEvent(event)
 
@@ -303,10 +302,7 @@ class BlockMenuListWidget(QtWidgets.QListWidget):
             className = item.opcls.__name__
             urls.append(className)
 
-        print urls
         data.setUrls(urls)
-
-        # print data
 
         return data
 
@@ -688,12 +684,8 @@ class BlockListWidget(QtWidgets.QListWidget):
             return indices[0].row()
 
     def dropEvent( self, event ):
-        print type(event)
 
         data = event.mimeData()
-        print data.formats()
-        # print data.data()
-        print data.urls()
 
         source = event.source()
         if isinstance(source,BlockListWidget):
@@ -935,7 +927,6 @@ class BlockWidget(BaseBlockWidget, block_widget.BlockWidget):
 
         data['active'] = self.activeCheckBox.isChecked()
 
-        print data
 
         self.op.reload(data)
 
@@ -1221,7 +1212,7 @@ class Block_Editor_Widget(QtWidgets.QWidget):
 
     def syncData(self):
         if self.blockWidget:
-            print "HERER"
+
             self.blockWidget.syncData()
 
     def clear(self):
@@ -1240,8 +1231,6 @@ class Block_Editor_Widget(QtWidgets.QWidget):
 
         op = self.op
 
-        print "ZZZ"
-        print self.op.attrs.items()
 
         # if not hasattr(op, 'attrs') or not getattr(op, 'attrs'):
         for fixedAttr in self.op.fixedAttrs:
@@ -1252,8 +1241,6 @@ class Block_Editor_Widget(QtWidgets.QWidget):
                 self.attrTree.setAttr(aname, val)
 
         for key, val in op.attrs.items():
-            print "CC"
-            print key, val
             if key not in self.attrTree.attrs():
                 attrType = type(val)
                 data = (key, (attrType, val))
