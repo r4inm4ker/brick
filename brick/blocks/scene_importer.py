@@ -1,6 +1,6 @@
-from brick.base import Generic
+from brick.base import Custom
 
-class MayaSceneImporter(Generic):
+class MayaSceneImporter(Custom):
     ui_order = 030
     ui_icon_name = "import.png"
     fixedAttrs = (('sceneFile', (str, '')),)

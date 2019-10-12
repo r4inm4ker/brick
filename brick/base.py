@@ -296,10 +296,14 @@ class Block(object):
 
 
 class Generic(Block):
-    category = 'generic'
+    category = 'Generic'
     categoryOrder = 100
 
 
 class Helper(Block):
-    category = 'helper'
+    category = 'Helper'
     categoryOrder = 400
+
+class Custom(Block):
+    category = 'Custom'
+    categoryOrder = 500

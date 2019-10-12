@@ -198,6 +198,7 @@ class BrickWidget(QtWidgets.QWidget):
                     for opcls in opclasses:
                         icon = IconManager.get(opcls.ui_icon_name,type="icon")
                         item = QtWidgets.QListWidgetItem(icon, opcls.__name__)
+                        item.opcls = opcls
                         item.setSizeHint(QtCore.QSize(100,30))
                         lwidget.addItem(item)
                         # btn = QtWidgets.QPushButton(opcls.__name__)
@@ -276,15 +277,48 @@ class BlockMenuListWidget(QtWidgets.QListWidget):
         self.setAlternatingRowColors(True)
         self.setDragEnabled(True)
         self.setDragDropMode(self.DragOnly)
+        self.setSelectionMode(self.ExtendedSelection)
+
+    def mousePressEvent(self, event, *args, **kwargs):
+        widget = Main_UI.ui.blockListWidget
+        Main_UI.ui.blockListWidget.setDragDropMode(widget.DragDrop)
+        print "PRESS"
+
+        return super(BlockMenuListWidget, self).mousePressEvent(event)
+
+
+    def mouseMoveEvent(self, event):
+
+
+
+        return super(BlockMenuListWidget, self).mouseMoveEvent(event)
+
+
+
+    def mimeData(self, items):
+        data = super(BlockMenuListWidget,self).mimeData(items)
+
+        urls = []
+        for item in items:
+            className = item.opcls.__name__
+            urls.append(className)
+
+        print urls
+        data.setUrls(urls)
+
+        # print data
+
+        return data
 
 
 class BlueprintWidget(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super(BlueprintWidget, self).__init__(parent=parent)
+        self._builder = None
         self._initUI()
         self._connectSignals()
         self._initData()
-        self._builder = None
+
 
     @property
     def builder(self):
@@ -302,7 +336,7 @@ class BlueprintWidget(QtWidgets.QWidget):
         with layout:
             self.headerWidget = qcreate(HeaderWidget)
             self.blockMenu = qcreate(BlockMenuWidget,self)
-            self.blockListWidget = qcreate(BlockListWidget)
+            self.blockListWidget = qcreate(BlockListWidget, blueprintWidget=self)
             with qcreate(HBoxLayout):
                 icon = IconManager.get("rewind.png", type="icon")
                 self.rewindButton = qcreate(Button,icon,"")
@@ -486,7 +520,7 @@ class BlueprintWidget(QtWidgets.QWidget):
         builder = base.GenericBuilder.loadBlueprint(blueprintPath)
         self.headerWidget.loadAttrs(builder)
         for block in builder.blocks:
-            self.addBlock(block)
+            self.insertBlock(block)
 
         self.builder = builder
 
@@ -520,29 +554,14 @@ class BlueprintWidget(QtWidgets.QWidget):
             else:
                 return uname
 
-    def addBlock(self, block):
-        item = BlockItem()
-        if block.__class__.__name__ == 'BreakPoint':
-            item.setSizeHint(QtCore.QSize(50, 40))
-            opWidget = BreakpointWidget(block, item)
-        else:
-            item.setSizeHint(QtCore.QSize(50, 80))
-            opWidget = BlockWidget(block, item)
-            opWidget.runBlockSignal.connect(self.runItemCallback)
-
-        opWidget.itemDeleted.connect(self.deleteBlock)
-
-        item.widget, opWidget.item = opWidget, item
-
-        self.blockListWidget.addItem(item)
-        self.builder.addBlock(block)
-        self.blockListWidget.setItemWidget(item, opWidget)
-        self.blockListWidget.setCurrentItem(item)
-
+    def insertBlock(self, block, index=-1):
+        self.blockListWidget.insertBlock(block, index=index)
         # TODO: find a more reliable way to do this (init indicator)
         self.refreshIndicator()
-
         log.info("added: {0}".format(self.builder.blocks))
+
+    def addBlock(self, block):
+        return self.blockListWidget.insertBlock(block)
 
     def deleteBlock(self, op):
         self.builder.blocks.remove(op)
@@ -605,10 +624,11 @@ class BlockListWidget(QtWidgets.QListWidget):
     currentIndexSet = QtCore.Signal(int)
 
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, blueprintWidget=None):
         super(BlockListWidget, self).__init__(parent=parent)
-        # self.setDragDropMode(self.InternalMove)
-        self.setDragDropMode(self.DragDrop)
+        self.blueprintWidget = blueprintWidget
+        self.setDragDropMode(self.InternalMove)
+        # self.setDragDropMode(self.DragDrop)
         self.setSelectionMode(self.ExtendedSelection)
 
         self.setStyleSheet(self.stylesheet)
@@ -624,11 +644,17 @@ class BlockListWidget(QtWidgets.QListWidget):
 
         self._currItemRow = None
 
+
+    @property
+    def builder(self):
+        return self.blueprintWidget.builder
+
     @property
     def opWidgets(self):
         return [self.item(idx).widget for idx in range(self.count())]
 
     def mousePressEvent(self, event, *args, **kwargs):
+        self.setDragDropMode(self.InternalMove)
         super(BlockListWidget, self).mousePressEvent(event)
 
         btn = event.button()
@@ -642,6 +668,7 @@ class BlockListWidget(QtWidgets.QListWidget):
         if newRow != self._currItemRow:
             self.itemOrderChanged.emit()
             self._currItemRow = newRow
+
 
     def rowsInserted(self, *args, **kwargs):
         super(BlockListWidget, self).rowsInserted(*args, **kwargs)
@@ -661,16 +688,55 @@ class BlockListWidget(QtWidgets.QListWidget):
             return indices[0].row()
 
     def dropEvent( self, event ):
+        print type(event)
+
         data = event.mimeData()
         print data.formats()
+        # print data.data()
         print data.urls()
 
         source = event.source()
         if isinstance(source,BlockListWidget):
-            self.setDragDropMode(self.InternalMove)
+            # self.setDragDropMode(self.InternalMove)
             ret = super(BlockListWidget, self).dropEvent(event)
-            self.setDragDropMode(self.DragDrop)
+            # self.setDragDropMode(self.DragDrop)
             return ret
+
+        elif isinstance(source, BlockMenuListWidget):
+            # DIRTY TRICK TO GET WHERE THE NEW ITEM SHOULD BE INSERTED
+            # use default behaviour of dropevent to put the item
+            super(BlockListWidget, self).dropEvent(event)
+            idx = 0
+            insertIndex = -1
+            while idx < range(self.count()):
+                item = self.item(idx)
+                if not hasattr(item,"widget"):
+                    insertIndex = idx
+                    self.takeItem(idx)
+                    break
+
+                idx+=1
+            #########################################
+
+
+            blockTypes = [each.path() for each in data.urls()]
+
+            for blockType in blockTypes:
+
+                currentIndex = self.currentIndex()
+
+                blockCls = lib.getBlockClassByName(blockType)
+                op = blockCls()
+
+                nextUniqueName = self.blueprintWidget.getNextUniqueName()
+                op.name = nextUniqueName
+
+
+
+                self.blueprintWidget.insertBlock(op, index=insertIndex)
+
+
+
         # urls = data.urls()
         # if ( urls and urls[0].scheme() == 'file' ):
         #     # for some reason, this doubles up the intro slash
@@ -678,6 +744,45 @@ class BlockListWidget(QtWidgets.QListWidget):
         #     self.setText(filepath)
         #     self.editingFinished.emit()
         #
+
+    def allItems(self):
+        return [self.item(idx) for idx in range(self.count())]
+
+
+    def addBlock(self, block):
+        index = self.count()
+        self.insertBlock(block,index)
+
+
+    def insertBlock(self, block, index=-1):
+        if index<0:
+            index = self.count()
+
+        item = BlockItem()
+        if block.__class__.__name__ == 'BreakPoint':
+            item.setSizeHint(QtCore.QSize(50, 40))
+            opWidget = BreakpointWidget(block, item)
+        else:
+            item.setSizeHint(QtCore.QSize(50, 80))
+            opWidget = BlockWidget(block, item)
+            opWidget.runBlockSignal.connect(self.runBlockCallback)
+        opWidget.itemDeleted.connect(self.deleteBlock)
+        item.widget, opWidget.item = opWidget, item
+
+        self.insertItem(index, item)
+        self.builder.addBlock(block)
+        self.setItemWidget(item, opWidget)
+        self.setCurrentItem(item)
+
+    def runBlockCallback(self, item):
+        index = self.indexFromItem(item).row()
+        self.blueprintWidget.setBuilderIndex(index)
+        self.blueprintWidget.buildNext()
+
+    def deleteBlock(self, op):
+        self.builder.blocks.remove(op)
+        log.info("deleted: {0}".format(self.builder.blocks))
+
 class BlockItem(QtWidgets.QListWidgetItem):
     pass
 
