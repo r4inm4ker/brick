@@ -5,6 +5,13 @@ import json
 import logging
 log = logging.getLogger("brick")
 
+class classproperty(object):
+    def __init__(self, getter):
+        self.getter = getter
+
+    def __get__(self, instance, owner):
+        return self.getter(owner)
+
 
 def getBlueprintDir():
     return "E:/git/brick/brick/test/templates"

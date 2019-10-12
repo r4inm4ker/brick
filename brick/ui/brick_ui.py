@@ -203,16 +203,6 @@ class BrickWidget(QtWidgets.QWidget):
                         lwidget.addItem(item)
             qcreate(Spacer, mode="vertical")
 
-
-    # def addBlock(self, opType):
-    #     blockCls = lib.getBlockClassByName(opType)
-    #     block = blockCls()
-    #
-    #     nextUniqueName = self.blueprintWidget.getNextUniqueName()
-    #     block.name = nextUniqueName
-    #
-    #     self.blueprintWidget.addBlock(block)
-
     def saveBlueprintDialogCalled(self):
         ui = ioDialog.SaveBlueprintDialog(self)
         ui.setting_file_updated_signal.connect(self.mainWindow.updateRecentFileMenu)
@@ -386,11 +376,11 @@ class BlueprintWidget(QtWidgets.QWidget):
         self.refreshHeaderAttrs()
         blockOrders = [wg.block.name for wg in self.blockListWidget.blockWidgets]
 
-        print "orders: \n"
-        for name in blockOrders:
-            print name
-
-        print "\n\n"
+        # print "orders: \n"
+        # for name in blockOrders:
+        #     print name
+        #
+        # print "\n\n"
 
 
         self.builder.syncOrder(blockOrders)
@@ -401,7 +391,7 @@ class BlueprintWidget(QtWidgets.QWidget):
 
     @property
     def nextStep(self):
-        self.syncBuilder()
+        # self.syncBuilder()
 
         try:
             nextStep = self.builder.nextStep
@@ -420,19 +410,19 @@ class BlueprintWidget(QtWidgets.QWidget):
                 return widget
 
     def rewind(self):
-        self.syncBuilder()
+        # self.syncBuilder()
         self.builder.reset()
         self.refreshIndicator()
         self.blockListWidget.scrollToTop()
 
     def stepBack(self):
-        self.syncBuilder()
+        # self.syncBuilder()
         if self.builder.nextStep > 0:
             self.builder.nextStep -= 1
         self.refreshIndicator()
 
     def stepForward(self):
-        self.syncBuilder()
+        # self.syncBuilder()
         if self.builder.nextStep < len(self.blockListWidget.blockWidgets):
             self.builder.nextStep += 1
         self.refreshIndicator()
@@ -446,7 +436,7 @@ class BlueprintWidget(QtWidgets.QWidget):
             self.builder.attrs[name] = value
 
     def buildNext(self):
-        self.syncBuilder()
+        # self.syncBuilder()
         self.refreshHeaderAttrs()
         # self.refreshNextBlock()
         ret = self.builder.buildNext()
@@ -457,7 +447,7 @@ class BlueprintWidget(QtWidgets.QWidget):
         return ret
 
     def fastForward(self):
-        self.syncBuilder()
+        # self.syncBuilder()
         progressDialog = QtWidgets.QProgressDialog("Running...","Abort",0, 100, self)
         progressDialog.show()
         progress = 0
@@ -489,26 +479,6 @@ class BlueprintWidget(QtWidgets.QWidget):
         self.clear()
         self.builder = None
 
-    def getNextUniqueName(self):
-        baseName = 'block'
-        blockIndex = 1
-        while True:
-            uname = "{0}{1}".format(baseName, blockIndex)
-            for idx in range(self.blockListWidget.count()):
-                item = self.blockListWidget.item(idx)
-                if not hasattr(item.widget, 'blockName'):
-                    continue
-                if uname == item.widget.blockName.text():
-                    blockIndex += 1
-                    repeat = True
-                    break
-            else:
-                repeat = False
-
-            if repeat:
-                continue
-            else:
-                return uname
 
     def insertBlock(self, block, index=-1):
         self.blockListWidget.insertBlock(block, index=index)
@@ -519,8 +489,8 @@ class BlueprintWidget(QtWidgets.QWidget):
     def addBlock(self, block):
         return self.blockListWidget.insertBlock(block)
 
-    def deleteBlock(self, op):
-        self.builder.blocks.remove(op)
+    def deleteBlock(self, block):
+        self.builder.blocks.remove(block)
         log.info("deleted: {0}".format(self.builder.blocks))
 
     def runItemCallback(self, item):
@@ -559,9 +529,6 @@ class BlockMenuWidget(QtWidgets.QWidget):
     def blueprintWidget(self):
         return self.parentWidget()
 
-    # def addBlockByType(self, blockType):
-    #     block = self.blueprintWidget.builder.createBlock(blockType)
-    #     self.blueprintWidget.addBlock(op)
 
 
 class BlockListWidget(QtWidgets.QListWidget):
@@ -617,14 +584,11 @@ class BlockListWidget(QtWidgets.QListWidget):
 
         newRow = self.currentRow()
         if newRow != self._currItemRow:
-            self.itemOrderChanged.emit()
             self._currItemRow = newRow
-
 
     def rowsInserted(self, *args, **kwargs):
         super(BlockListWidget, self).rowsInserted(*args, **kwargs)
         self.scrollToBottom()
-
 
     def setNextToSelected(self):
         index = self.currentIndex()
@@ -638,15 +602,15 @@ class BlockListWidget(QtWidgets.QListWidget):
         if indices:
             return indices[0].row()
 
-    def dropEvent( self, event ):
+    def dropEvent(self, event):
 
         data = event.mimeData()
 
         source = event.source()
-        if isinstance(source,BlockListWidget):
+        if isinstance(source, BlockListWidget):
             # self.setDragDropMode(self.InternalMove)
             ret = super(BlockListWidget, self).dropEvent(event)
-            # self.setDragDropMode(self.DragDrop)
+            self.itemOrderChanged.emit()
             return ret
 
         elif isinstance(source, BlockMenuListWidget):
@@ -657,16 +621,15 @@ class BlockListWidget(QtWidgets.QListWidget):
             insertIndex = -1
             while idx < range(self.count()):
                 item = self.item(idx)
-                if not hasattr(item,"widget"):
+                if not hasattr(item, "widget"):
                     insertIndex = idx
                     self.takeItem(idx)
                     break
 
-                idx+=1
+                idx += 1
             #########################################
 
             blockTypes = [each.path() for each in data.urls()]
-
             for blockType in blockTypes:
                 block = self.blueprintWidget.builder.createBlock(blockType)
                 self.insertBlock(block, index=insertIndex)
@@ -699,6 +662,7 @@ class BlockListWidget(QtWidgets.QListWidget):
         self.builder.insertBlock(block, index=index)
         self.setItemWidget(item, opWidget)
         self.setCurrentItem(item)
+        self.itemOrderChanged.emit()
 
     def runBlockCallback(self, blockWidget):
         item = blockWidget.item
@@ -706,8 +670,9 @@ class BlockListWidget(QtWidgets.QListWidget):
         self.blueprintWidget.setBuilderIndex(index)
         self.blueprintWidget.buildNext()
 
-    def deleteBlock(self, op):
-        self.builder.blocks.remove(op)
+    def deleteBlock(self, block):
+        self.builder.blocks.remove(block)
+        self.blueprintWidget.syncBuilder()
         log.info("deleted: {0}".format(self.builder.blocks))
 
 class BlockItem(QtWidgets.QListWidgetItem):
@@ -1041,24 +1006,24 @@ class Block_Editor_Widget(QtWidgets.QWidget):
         self.attrTree = AttrTree(self)
         self.layout().addWidget(self.attrTree)
 
-        op = self.block
+        block = self.block
 
 
-        # if not hasattr(op, 'attrs') or not getattr(op, 'attrs'):
+        # if not hasattr(block, 'attrs') or not getattr(block, 'attrs'):
         for fixedAttr in self.block.fixedAttrs:
             aname, (atype, aval) = fixedAttr
             self.attrTree.addAttr(fixedAttr)
-            if aname in op.attrs:
-                val = op.attrs.get(aname)
+            if aname in block.attrs:
+                val = block.attrs.get(aname)
                 self.attrTree.setAttr(aname, val)
 
-        for key, val in op.attrs.items():
+        for key, val in block.attrs.items():
             if key not in self.attrTree.attrs():
                 attrType = type(val)
                 data = (key, (attrType, val))
                 self.attrTree.addAttr(data)
 
-        for key, val in op.inputs.iteritems():
+        for key, val in block.inputs.iteritems():
             if key not in self.attrTree.attrs():
                 data = (key, (type(val), val))
                 self.attrTree.addAttr(data)

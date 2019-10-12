@@ -18,7 +18,9 @@ class BaseBlockWidget(QtWidgets.QWidget):
         self.item = item
         self._headerStyleSheet = None
 
-    def initSignals(self):
+
+
+    def _connectSignals(self):
         self.deleteButton.clicked.connect(self.delete)
         self.activeCheckBox.clicked.connect(self.switchActiveState)
         self.blockNameField.editingFinished.connect(self.blockNameFieldEdited)
@@ -33,21 +35,29 @@ class BaseBlockWidget(QtWidgets.QWidget):
     def switchActiveState(self):
         currState = self.activeCheckBox.isChecked()
         self.setEnableDisplay(currState)
+
+        self.syncData()
         self.activeStateEdited.emit(currState)
 
     def blockNameFieldEdited(self):
         val = self.blockNameField.getValue()
-        self.nameEdited.emit(str)
+        self.syncData()
+        self.nameEdited.emit(val)
 
     def switchIndicator(self, state):
         return
 
+    def syncData(self):
+        return
 
 class BlockWidget(BaseBlockWidget):
 
     def __init__(self, *args, **kwargs):
         super(BlockWidget, self).__init__(*args,**kwargs)
+        self._initUI()
+        self._connectSignals()
 
+    def _initUI(self):
         layout = VBoxLayout(self)
         layout.setContentsMargins(2,0,2,0)
         with layout:
@@ -103,8 +113,8 @@ class BlockWidget(BaseBlockWidget):
         self.blockTypeLabel.setText(self.block.__class__.__name__)
         self.blockNameField.setValue(self.block.name)
 
-    def initSignals(self):
-        super(BlockWidget, self).initSignals()
+    def _connectSignals(self):
+        super(BlockWidget, self)._connectSignals()
         self.runBlockButton.clicked.connect(self.runBlockCalled)
 
     def setEnableDisplay(self, enabled):
@@ -113,20 +123,14 @@ class BlockWidget(BaseBlockWidget):
         else:
             self.setStyleSheet("""QWidget {background-color:gray;}""")
 
-    def editNameChange(self):
-        self.block.name = self.blockNameField.text()
-
-    def loadData(self):
-        block = self.block
-        self.blockName.setText(block.name)
 
     def runBlockCalled(self):
-        self.runBlockSignal.emit(self.item)
+        self.runBlockSignal.emit(self)
 
     def syncData(self):
         data = OrderedDict()
         data['type'] = self.block.__class__.__name__
-        data['name'] = self.blockName.text()
+        data['name'] = self.blockNameField.text()
         data['notes'] = ""
 
         editorData = self.editorWidget.getData()
@@ -147,7 +151,10 @@ class BlockWidget(BaseBlockWidget):
 class BreakPointWidget(BaseBlockWidget):
     def __init__(self, *args, **kwargs):
         super(BreakPointWidget, self).__init__(*args,**kwargs)
+        self._initUI()
+        self._connectSignals()
 
+    def _initUI(self):
         layout = VBoxLayout(self)
         layout.setContentsMargins(2,0,2,0)
         with layout:
@@ -164,6 +171,8 @@ class BreakPointWidget(BaseBlockWidget):
                 with self.frame.layout():
                     self.activeCheckBox = qcreate(Checkbox)
                     self.blockType = qcreate(QtWidgets.QLabel,"Break Point")
+                    self.blockNameField = qcreate(StringField)
+                    self.blockNameField.setHidden(True)
                     qcreate(Spacer)
 
                 with qcreate(VBoxLayout):
@@ -186,5 +195,6 @@ class BreakPointWidget(BaseBlockWidget):
     def syncData(self):
         data = OrderedDict()
         data['type'] = self.block.__class__.__name__
+        # data['name'] = self.block.name
         data['active'] = self.activeCheckBox.isChecked()
-        return data
+        self.block.reload(data)
