@@ -258,16 +258,16 @@ class TemplateField(QtWidgets.QWidget):
     def setValue(self,value):
         self.chooser.setValue(value)
 
-class OpInputField(AttrField, QtWidgets.QWidget):
+class BlockInputField(AttrField, QtWidgets.QWidget):
 
     def __init__(self, parent=None):
-        super(OpInputField, self).__init__(parent)
+        super(BlockInputField, self).__init__(parent)
         layout = QtWidgets.QHBoxLayout()
         self.setLayout(layout)
         label = QtWidgets.QLabel("block:")
         layout.addWidget(label)
-        self.opField = QtWidgets.QLineEdit()
-        layout.addWidget(self.opField)
+        self.blockField = QtWidgets.QLineEdit()
+        layout.addWidget(self.blockField)
         label = QtWidgets.QLabel("attr:")
         layout.addWidget(label)
         self.attrField = QtWidgets.QLineEdit()
@@ -275,11 +275,11 @@ class OpInputField(AttrField, QtWidgets.QWidget):
         layout.addWidget(self.attrField)
 
     def getValue(self):
-        return self.opField.text(), self.attrField.text()
+        return self.blockField.text(), self.attrField.text()
 
     def setValue(self, value):
         opVal, attrVal = value
-        self.opField.setText(opVal)
+        self.blockField.setText(opVal)
         self.attrField.setText(attrVal)
 
 
@@ -295,7 +295,7 @@ class AttrFieldMaker(object):
                   (float, FloatField),
                   (bool, BoolField),
                   (attrtype.Script, ScriptField),
-                  (attrtype.Input, OpInputField),
+                  (attrtype.Input, BlockInputField),
     )
 
     defaultWidget = StringField

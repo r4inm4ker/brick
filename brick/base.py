@@ -10,6 +10,7 @@ import uuid
 import sys
 import logging
 
+
 log = logging.getLogger("brick")
 
 
@@ -31,9 +32,32 @@ class Builder(object):
     def name(self, name):
         self.attrs['name'] = name
 
-    def addBlock(self, block):
-        self.blocks.append(block)
+    def insertBlock(self, block, index=-1):
+        if index < 0:
+            index = len(self.blocks)
+        self.blocks.insert(index, block)
         block.parent = self
+
+    def createBlock(self, blockType):
+        blockCls = lib.getBlockClassByName(blockType)
+        block = blockCls()
+        nextUniqueName = self.getNextUniqueName(blockType=blockType)
+        block.name = nextUniqueName
+        return block
+
+    def getNextUniqueName(self, blockType=None):
+        baseName = blockType or "block"
+        blockIndex = 1
+        while True:
+            uname = "{0}{1}".format(baseName, blockIndex)
+            for currentBlock in self.blocks:
+                if uname == currentBlock.name:
+                    blockIndex += 1
+                    break
+            else:
+                # no repeat with existing name
+                return uname
+
 
     def saveBlueprint(self, bluePrint, notes=""):
 
@@ -96,7 +120,7 @@ class Builder(object):
 
         for blockData in data.get('blocks'):
             block = Block.load(blockData)
-            builder.addBlock(block)
+            builder.insertBlock(block)
 
         return builder
 
@@ -105,11 +129,9 @@ class Builder(object):
         for op in self.blocks:
             op.reset()
 
-    def reorderOps(self, order):
-        nameMap = {op.name: op for op in self.blocks}
-
+    def syncOrder(self, order):
+        nameMap = {block.name: block for block in self.blocks}
         newList = [nameMap.get(name, None) for name in order if nameMap.get(name, None)]
-
         self.blocks = newList
 
     def rewind(self):
@@ -117,7 +139,7 @@ class Builder(object):
 
     def buildNext(self):
         try:
-            block = next(self.genBlock())
+            block = next(self.iterBlocks())
 
             if block:
                 self.doTheRunning(block)
@@ -131,10 +153,10 @@ class Builder(object):
             return BuildStatus.end
 
     def fastForward(self):
-        for block in self.genBlock():
+        for block in self.iterBlocks():
             self.doTheRunning(block)
 
-    def genBlock(self):
+    def iterBlocks(self):
         while True:
             if self.nextStep >= len(self.blocks):
                 return
@@ -175,6 +197,7 @@ class GenericBuilder(Builder):
 
 class Block(object):
     def __init__(self):
+        self.uuid = None
         self.notes = ''
         self.attrs = {}
         self.runTimeAttrs = {}
@@ -185,6 +208,7 @@ class Block(object):
         self.active = True
         self.parent = None
         self.buildStatus = BuildStatus.nothing
+
 
     def setAttr(self, key, val):
         self.attrs[key] = val

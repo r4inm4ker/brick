@@ -190,48 +190,34 @@ class BrickWidget(QtWidgets.QWidget):
 
         with self.blockMenuLayout:
             qcreate(Spacer, mode="vertical")
-            for category, opclasses in blockMap.items():
+            for category, blockClasses in blockMap.items():
                 gbox = qcreate(QtWidgets.QGroupBox, layoutType=VBoxLayout)
                 gbox.setTitle(category)
                 with gbox.layout():
                     lwidget = qcreate(BlockMenuListWidget)
-                    for opcls in opclasses:
-                        icon = IconManager.get(opcls.ui_icon_name,type="icon")
-                        item = QtWidgets.QListWidgetItem(icon, opcls.__name__)
-                        item.opcls = opcls
+                    for blockClass in blockClasses:
+                        icon = IconManager.get(blockClass.ui_icon_name,type="icon")
+                        item = QtWidgets.QListWidgetItem(icon, blockClass.__name__)
+                        item.blockClass = blockClass
                         item.setSizeHint(QtCore.QSize(100,30))
                         lwidget.addItem(item)
-                        # btn = QtWidgets.QPushButton(opcls.__name__)
-                        # layout.addWidget(btn)
-                        # btn.clicked.connect(partial(self.addBlock, opcls.__name__))
             qcreate(Spacer, mode="vertical")
-            # gbox = QtWidgets.QGroupBox()
-            # layout = QtWidgets.QVBoxLayout()
-            # gbox.setLayout(layout)
-            # gbox.setTitle(category)
-            # self.blockMenuLayout.addWidget(gbox)
-            #
-            # for opcls in opclasses:
-            #     btn = QtWidgets.QPushButton(opcls.__name__)
-            #     layout.addWidget(btn)
-            #     btn.clicked.connect(partial(self.addBlock, opcls.__name__))
 
-    def addBlock(self, opType):
-        blockCls = lib.getBlockClassByName(opType)
-        op = blockCls()
 
-        nextUniqueName = self.blueprintWidget.getNextUniqueName()
-        op.name = nextUniqueName
-
-        self.blueprintWidget.addBlock(op)
+    # def addBlock(self, opType):
+    #     blockCls = lib.getBlockClassByName(opType)
+    #     block = blockCls()
+    #
+    #     nextUniqueName = self.blueprintWidget.getNextUniqueName()
+    #     block.name = nextUniqueName
+    #
+    #     self.blueprintWidget.addBlock(block)
 
     def saveBlueprintDialogCalled(self):
         ui = ioDialog.SaveBlueprintDialog(self)
         ui.setting_file_updated_signal.connect(self.mainWindow.updateRecentFileMenu)
         ui.saveSignalled.connect(self.mainWindow.saveBluePrint)
         ui.exec_()
-
-
 
     def loadBlueprintDialogCalled(self):
         ui = ioDialog.LoadBlueprintDialog(self)
@@ -241,15 +227,12 @@ class BrickWidget(QtWidgets.QWidget):
 
         ui.exec_()
 
-
-
-
     def newBlueprint(self):
         confirm = QtWidgets.QMessageBox.question(None,
-                                             'Message',
-                                             "save current blueprint?",
-                                             QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
-                                             QtWidgets.QMessageBox.No)
+                                                 'Message',
+                                                 "save current blueprint?",
+                                                 QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+                                                 QtWidgets.QMessageBox.No)
 
         if confirm == QtWidgets.QMessageBox.No:
             self.blueprintWidget.initDefault()
@@ -299,7 +282,7 @@ class BlockMenuListWidget(QtWidgets.QListWidget):
 
         urls = []
         for item in items:
-            className = item.opcls.__name__
+            className = item.blockClass.__name__
             urls.append(className)
 
         data.setUrls(urls)
@@ -313,18 +296,6 @@ class BlueprintWidget(QtWidgets.QWidget):
         self._builder = None
         self._initUI()
         self._connectSignals()
-        self._initData()
-
-
-    @property
-    def builder(self):
-        if not self._builder:
-            self._builder = self.createBuilder()
-        return self._builder
-
-    @builder.setter
-    def builder(self, builder):
-        self._builder = builder
 
     def _initUI(self):
         self.setContentsMargins(0, 0, 0, 0)
@@ -369,22 +340,28 @@ class BlueprintWidget(QtWidgets.QWidget):
         self.blockListWidget.itemOrderChanged.connect(self.itemOrderChanged)
         self.blockListWidget.currentIndexSet.connect(self.setBuilderIndex)
 
-    def _initData(self):
-        self.headerWidget.initAttrs(base.GenericBuilder)
 
-    def createBuilder(self):
+    @property
+    def builder(self):
+        if not self._builder:
+            self._builder = self._createBuilder()
+        return self._builder
+
+    @builder.setter
+    def builder(self, builder):
+        self._builder = builder
+
+    def _createBuilder(self):
         builder = base.GenericBuilder()
-
         for idx in range(self.headerWidget.attrTree.topLevelItemCount()):
             item = self.headerWidget.attrTree.topLevelItem(idx)
             name = item.getName()
             value = item.getValue()
             builder.attrs[name] = value
-
         return builder
 
     def refreshIndicator(self):
-        for idx, widget in enumerate(self.blockListWidget.opWidgets):
+        for idx, widget in enumerate(self.blockListWidget.blockWidgets):
             if idx == self.nextStep:
                 widget.switchIndicator(BuildStatus.next)
                 try:
@@ -405,20 +382,31 @@ class BlueprintWidget(QtWidgets.QWidget):
         self.builder.nextStep = index
         self.refreshIndicator()
 
-    def collectItemMap(self):
-        return [wg.op.name for wg in self.blockListWidget.opWidgets]
+    def syncBuilder(self):
+        self.refreshHeaderAttrs()
+        blockOrders = [wg.block.name for wg in self.blockListWidget.blockWidgets]
+
+        print "orders: \n"
+        for name in blockOrders:
+            print name
+
+        print "\n\n"
+
+
+        self.builder.syncOrder(blockOrders)
 
     def itemOrderChanged(self):
-        opOrder = self.collectItemMap()
-        self.builder.reorderOps(opOrder)
+        self.syncBuilder()
         self.refreshIndicator()
 
     @property
     def nextStep(self):
+        self.syncBuilder()
+
         try:
             nextStep = self.builder.nextStep
         except AttributeError:
-            if not self.blockListWidget.opWidgets:
+            if not self.blockListWidget.blockWidgets:
                 return
             else:
                 nextStep = 0
@@ -427,33 +415,25 @@ class BlueprintWidget(QtWidgets.QWidget):
 
     @property
     def nextWidget(self):
-        for idx, widget in enumerate(self.blockListWidget.opWidgets):
+        for idx, widget in enumerate(self.blockListWidget.blockWidgets):
             if idx == self.nextStep:
                 return widget
 
-    # def refreshAllBlocks(self):
-        # for opWidget in self.blockListWidget.opWidgets:
-        #     data = opWidget.genData()
-        #     opWidget.op.reload(data)
-
-    # def refreshNextBlock(self):
-    #     widget = self.nextWidget
-    #     if widget:
-    #         data = self.nextWidget.genData()
-    #         self.builder.blocks[self.nextStep].reload(data)
-
     def rewind(self):
+        self.syncBuilder()
         self.builder.reset()
         self.refreshIndicator()
         self.blockListWidget.scrollToTop()
 
     def stepBack(self):
+        self.syncBuilder()
         if self.builder.nextStep > 0:
             self.builder.nextStep -= 1
         self.refreshIndicator()
 
     def stepForward(self):
-        if self.builder.nextStep < len(self.blockListWidget.opWidgets):
+        self.syncBuilder()
+        if self.builder.nextStep < len(self.blockListWidget.blockWidgets):
             self.builder.nextStep += 1
         self.refreshIndicator()
 
@@ -466,6 +446,7 @@ class BlueprintWidget(QtWidgets.QWidget):
             self.builder.attrs[name] = value
 
     def buildNext(self):
+        self.syncBuilder()
         self.refreshHeaderAttrs()
         # self.refreshNextBlock()
         ret = self.builder.buildNext()
@@ -476,21 +457,10 @@ class BlueprintWidget(QtWidgets.QWidget):
         return ret
 
     def fastForward(self):
+        self.syncBuilder()
         progressDialog = QtWidgets.QProgressDialog("Running...","Abort",0, 100, self)
-        # progressDialog.setWindowModality(QtCore.Qt.WindowModal)
         progressDialog.show()
-        #
-        #
-        # pm.progressWindow(
-        #     title='Running...',
-        #     status='Running ...',
-        #     min=0,
-        #     max=100,
-        #     isInterruptable=True)
-        #
         progress = 0
-        #
-        # status = "Running ..."
 
         while True:
             ret = self.buildNext()
@@ -498,18 +468,8 @@ class BlueprintWidget(QtWidgets.QWidget):
             progressDialog.setValue(progress)
             if ret == BuildStatus.fail or ret == BuildStatus.end:
                 break
-            # pm.refresh()
-            # pm.progressWindow(edit=True, status=status, progress=progress)
 
         progressDialog.setValue(100)
-
-    def refreshBuilder(self):
-        self.refreshHeaderAttrs()
-        # self.refreshAllBlocks()
-
-    # def save(self, blueprintPath, notes=""):
-    #     self.refreshBuilder()
-    #     self.builder.saveBlueprint(blueprintPath, notes=notes)
 
     def load(self, blueprintPath):
         self.clear()
@@ -553,7 +513,7 @@ class BlueprintWidget(QtWidgets.QWidget):
     def insertBlock(self, block, index=-1):
         self.blockListWidget.insertBlock(block, index=index)
         # TODO: find a more reliable way to do this (init indicator)
-        self.refreshIndicator()
+        # self.refreshIndicator()
         log.info("added: {0}".format(self.builder.blocks))
 
     def addBlock(self, block):
@@ -590,7 +550,7 @@ class BlockMenuWidget(QtWidgets.QWidget):
 
             for opcls in opclasses:
                 action = QtWidgets.QAction(opcls.__name__, self)
-                action.triggered.connect(partial(self.addBlockByType, opcls.__name__))
+                # action.triggered.connect(partial(self.addBlockByType, opcls.__name__))
                 categoryMenu.addAction(action)
 
         layout.addWidget(menuBar)
@@ -599,14 +559,9 @@ class BlockMenuWidget(QtWidgets.QWidget):
     def blueprintWidget(self):
         return self.parentWidget()
 
-    def addBlockByType(self, blockType):
-        blockCls = lib.getBlockClassByName(blockType)
-        op = blockCls()
-
-        nextUniqueName = self.blueprintWidget.getNextUniqueName()
-        op.name = nextUniqueName
-
-        self.blueprintWidget.addBlock(op)
+    # def addBlockByType(self, blockType):
+    #     block = self.blueprintWidget.builder.createBlock(blockType)
+    #     self.blueprintWidget.addBlock(op)
 
 
 class BlockListWidget(QtWidgets.QListWidget):
@@ -646,7 +601,7 @@ class BlockListWidget(QtWidgets.QListWidget):
         return self.blueprintWidget.builder
 
     @property
-    def opWidgets(self):
+    def blockWidgets(self):
         return [self.item(idx).widget for idx in range(self.count())]
 
     def mousePressEvent(self, event, *args, **kwargs):
@@ -710,32 +665,11 @@ class BlockListWidget(QtWidgets.QListWidget):
                 idx+=1
             #########################################
 
-
             blockTypes = [each.path() for each in data.urls()]
 
             for blockType in blockTypes:
-
-                currentIndex = self.currentIndex()
-
-                blockCls = lib.getBlockClassByName(blockType)
-                op = blockCls()
-
-                nextUniqueName = self.blueprintWidget.getNextUniqueName()
-                op.name = nextUniqueName
-
-
-
-                self.blueprintWidget.insertBlock(op, index=insertIndex)
-
-
-
-        # urls = data.urls()
-        # if ( urls and urls[0].scheme() == 'file' ):
-        #     # for some reason, this doubles up the intro slash
-        #     filepath = str(urls[0].path())[1:]
-        #     self.setText(filepath)
-        #     self.editingFinished.emit()
-        #
+                block = self.blueprintWidget.builder.createBlock(blockType)
+                self.insertBlock(block, index=insertIndex)
 
     def allItems(self):
         return [self.item(idx) for idx in range(self.count())]
@@ -753,20 +687,21 @@ class BlockListWidget(QtWidgets.QListWidget):
         item = BlockItem()
         if block.__class__.__name__ == 'BreakPoint':
             item.setSizeHint(QtCore.QSize(50, 40))
-            opWidget = BreakpointWidget(block, item)
+            opWidget = block_widgets.BreakPointWidget(block, item)
         else:
             item.setSizeHint(QtCore.QSize(50, 80))
-            opWidget = BlockWidget(block, item)
+            opWidget = block_widgets.BlockWidget(block, item)
             opWidget.runBlockSignal.connect(self.runBlockCallback)
         opWidget.itemDeleted.connect(self.deleteBlock)
         item.widget, opWidget.item = opWidget, item
 
         self.insertItem(index, item)
-        self.builder.addBlock(block)
+        self.builder.insertBlock(block, index=index)
         self.setItemWidget(item, opWidget)
         self.setCurrentItem(item)
 
-    def runBlockCallback(self, item):
+    def runBlockCallback(self, blockWidget):
+        item = blockWidget.item
         index = self.indexFromItem(item).row()
         self.blueprintWidget.setBuilderIndex(index)
         self.blueprintWidget.buildNext()
@@ -822,129 +757,7 @@ class HeaderWidget(QtWidgets.QWidget):
         self.clear()
         self.initAttrs(base.GenericBuilder)
 
-from brick.ui.components import block_widget, breakpoint_widget
-class BaseBlockWidget(QtWidgets.QWidget):
-    itemDeleted = QtCore.Signal(object)
-
-    def __init__(self, op, item, parent=None):
-        super(BaseBlockWidget, self).__init__(parent=parent)
-        self.op = op
-        self.item = item
-        self._headerStyleSheet = None
-
-    # def createOp(self):
-    #     data = OrderedDict()
-    #     data['type'] = self.op.__class__.__name__
-    #     data['name'] = ""
-    #     data['notes'] = ""
-    #     data['attrs'] = {}
-    #     data['inputs'] = {}
-    #     data['active'] = self.activeCheckBox.isChecked()
-
-        # return self.op.load(data)
-
-    def initSignals(self):
-        self.deleteButton.clicked.connect(self.delete)
-        self.activeCheckBox.clicked.connect(self.switchActiveState)
-
-    def delete(self):
-        self.itemDeleted.emit(self.op)
-        item = self.item
-        lw = item.listWidget()
-        idx = lw.indexFromItem(item).row()
-        lw.takeItem(idx)
-
-    def switchActiveState(self):
-        currState = self.activeCheckBox.isChecked()
-
-        self.setEnableDisplay(currState)
-
-
-class BreakpointWidget(BaseBlockWidget, breakpoint_widget.BreakPointWidget):
-    def __init__(self, op, item, parent=None):
-        super(BreakpointWidget, self).__init__(op, item, parent=parent)
-        self.setContentsMargins(0, 0, 0, 0)
-        self.op = op
-        self.initSignals()
-
-    def switchIndicator(self, state):
-        return
-
-    def syncData(self):
-        data = OrderedDict()
-        data['type'] = self.op.__class__.__name__
-        data['active'] = self.activeCheckBox.isChecked()
-        return data
-
-
-class BlockWidget(BaseBlockWidget, block_widget.BlockWidget):
-    runBlockSignal = QtCore.Signal(BlockItem)
-    def __init__(self, op, item, parent=None):
-        super(BlockWidget, self).__init__(op, item, parent=parent)
-        self.setContentsMargins(0, 0, 0, 0)
-        self.editorWidget=None
-
-        self.op = op
-
-        self.blockType.setText(op.__class__.__name__)
-
-        # self.attrTree = AttrTree(self)
-
-        # self.attrTreeLayout.addWidget(self.attrTree)
-
-        self.initSignals()
-        self.loadData()
-
-    def initSignals(self):
-        super(BlockWidget, self).initSignals()
-        self.blockName.textEdited.connect(self.editNameChange)
-        self.runBlockButton.clicked.connect(self.runBlockCalled)
-
-    def editNameChange(self):
-        self.op.name = self.blockName.text()
-
-    def loadData(self):
-        op = self.op
-        self.blockName.setText(op.name)
-
-
-    def runBlockCalled(self):
-        self.runBlockSignal.emit(self.item)
-
-
-    def syncData(self):
-        data = OrderedDict()
-        data['type'] = self.op.__class__.__name__
-        data['name'] = self.blockName.text()
-        data['notes'] = ""
-
-
-        editorData = self.editorWidget.getData()
-
-        for dataName, dataValue in editorData.items():
-            data[dataName] = dataValue
-
-
-        data['active'] = self.activeCheckBox.isChecked()
-
-
-        self.op.reload(data)
-
-    # def createOp(self):
-    #     data = self.genData()
-    #     return self.op.load(data)
-
-    def sizeUp(self):
-        item = self.item
-        numItem = self.attrTree.topLevelItemCount()
-        baseHeight = 150
-        itemHeight = 30
-        sizeHint = QtCore.QSize(item.sizeHint().width(), baseHeight + numItem * itemHeight)
-
-        item.setSizeHint(sizeHint)
-
-    def switchIndicator(self, state):
-        self.indicatorWidget.setCurrentIndex(state)
+from brick.ui.components import block_widgets
 
 
 class AttrTree(QtWidgets.QTreeWidget):
@@ -1197,7 +1010,6 @@ class AddInputDialog(QtWidgets.QDialog):
         self.close()
 
 
-
 class Block_Editor_Widget(QtWidgets.QWidget):
     def __init__(self, blockWidget=None, **kwargs):
         super(Block_Editor_Widget, self).__init__(**kwargs)
@@ -1207,8 +1019,8 @@ class Block_Editor_Widget(QtWidgets.QWidget):
             qcreate(Button, "1")
 
     @property
-    def op(self):
-        return self.blockWidget.op
+    def block(self):
+        return self.blockWidget.block
 
     def syncData(self):
         if self.blockWidget:
@@ -1229,11 +1041,11 @@ class Block_Editor_Widget(QtWidgets.QWidget):
         self.attrTree = AttrTree(self)
         self.layout().addWidget(self.attrTree)
 
-        op = self.op
+        op = self.block
 
 
         # if not hasattr(op, 'attrs') or not getattr(op, 'attrs'):
-        for fixedAttr in self.op.fixedAttrs:
+        for fixedAttr in self.block.fixedAttrs:
             aname, (atype, aval) = fixedAttr
             self.attrTree.addAttr(fixedAttr)
             if aname in op.attrs:
