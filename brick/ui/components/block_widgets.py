@@ -1,6 +1,7 @@
 from collections import OrderedDict
 from qqt import QtCore, QtGui, QtWidgets
 from qqt.gui import qcreate, HBoxLayout, VBoxLayout, Button, StringField, Spacer, Checkbox, SeparatorLine
+from brick.ui import IconManager
 
 class BaseBlockWidget(QtWidgets.QWidget):
     itemDeleted = QtCore.Signal(object)
@@ -98,7 +99,9 @@ class BlockWidget(BaseBlockWidget):
 
 
                 with qcreate(VBoxLayout):
-                    self.deleteButton = qcreate(Button, "x")
+                    icon = IconManager.get("delete.svg", type="icon")
+                    self.deleteButton = qcreate(Button, "",icon=icon)
+                    self.deleteButton.setFixedSize(QtCore.QSize(15,15))
 
 
                     # self.runBlockButton = qcreate(Button,">")
@@ -176,7 +179,9 @@ class BreakPointWidget(BaseBlockWidget):
                     qcreate(Spacer)
 
                 with qcreate(VBoxLayout):
-                    self.deleteButton = qcreate(Button, "x")
+                    icon = IconManager.get("delete.svg", type="icon")
+                    self.deleteButton = qcreate(Button, "", icon=icon)
+                    self.deleteButton.setFixedSize(QtCore.QSize(15, 15))
 
 
             qcreate(SeparatorLine)

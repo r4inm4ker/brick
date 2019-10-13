@@ -10,7 +10,7 @@
             "active": true, 
             "inputs": {}, 
             "attrs": {
-                "func": "import maya.cmds as mc\n\nmc.file(new=1,f=1)"
+                "script": "import maya.cmds as mc\n\nmc.file(new=1,f=1)"
             }
         }, 
         {

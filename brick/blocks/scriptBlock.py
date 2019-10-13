@@ -5,7 +5,7 @@ from brick.base import Generic, Custom
 class ScriptBlock(Generic):
     ui_order = 010
     ui_icon_name = "python_script.svg"
-    fixedAttrs = (('func', (Script, '')),)
+    fixedAttrs = (('script', (Script, '')),)
 
     def _execute(self):
         locals().update(self.runTimeAttrs)
@@ -14,7 +14,7 @@ class ScriptBlock(Generic):
         for key, val in locals().iteritems():
             oldLocals[key] = val
 
-        func = self.runTimeAttrs.get('func')
+        func = self.runTimeAttrs.get('script')
 
         if not func:
             return
@@ -35,7 +35,7 @@ class ScriptBlock(Generic):
 class TestScriptBlock(Custom):
     ui_order=510
     ui_icon_name = "python_script.svg"
-    fixedAttrs = (('func', (Script, '')),)
+    fixedAttrs = (('script', (Script, '')),)
 
     def _execute(self):
         locals().update(self.runTimeAttrs)
@@ -44,7 +44,7 @@ class TestScriptBlock(Custom):
         for key, val in locals().iteritems():
             oldLocals[key] = val
 
-        func = self.runTimeAttrs.get('func')
+        func = self.runTimeAttrs.get('script')
 
         func = 'print "RUN {}"'.format(self.name)
 

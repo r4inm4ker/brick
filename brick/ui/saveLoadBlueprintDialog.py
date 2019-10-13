@@ -1,5 +1,5 @@
 import os
-from Qt import QtWidgets, QtGui, QtCore
+from qqt import QtWidgets, QtGui, QtCore
 from Qt.QtCompat import loadUi
 from brick.lib.path import Path
 
@@ -14,13 +14,17 @@ UIDIR = os.path.dirname(__file__)
 
 import brick.settings as settings
 
+from brick.ui import IconManager
+
+
 class DeleteButton(QtWidgets.QPushButton):
     """
     A simple delete button to be attached to treeWidgetItem.
     """
     def __init__(self, *args, **kwargs):
         super(DeleteButton, self).__init__(*args, **kwargs)
-        self.setText('x')
+        icon = IconManager.get('trashbin.svg',type="icon")
+        self.setIcon(icon)
         self.setFlat(True)
         sizePol = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
         self.setSizePolicy(sizePol)
@@ -95,6 +99,7 @@ class BlueprintTreeItem(QtWidgets.QTreeWidgetItem):
         self.deleteButton = None
         self.loadData()
 
+
     @property
     def name(self):
         return self._name
@@ -122,7 +127,8 @@ class BlueprintTreeItem(QtWidgets.QTreeWidgetItem):
 
             # column 2
             self.deleteButton = DeleteButton()
-            self.deleteButton.released.connect(self.removeItem)
+            self.deleteButton.clicked.connect(self.removeItem)
+            self.setSizeHint(2, QtCore.QSize(15, 15))
 
     def isValid(self):
         return all([self._name, self._notes])
@@ -130,15 +136,15 @@ class BlueprintTreeItem(QtWidgets.QTreeWidgetItem):
     def removeItem(self):
         reply = QtWidgets.QMessageBox.question(None,
                                            'Message',
-                                           "Are you sure to delete this resource(s)",
-                                           QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
-                                           QtWidgets.QMessageBox.No)
+                                           "Are you sure to delete this blueprint?",
+                                           QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.Cancel,
+                                           QtWidgets.QMessageBox.Cancel)
         if reply == QtWidgets.QMessageBox.Yes:
             treeWidget = self.treeWidget()
             treeWidget.deleteItem(self)
 
 
-class AbstractBlueprintDialog(QtWidgets.QDialog):
+class BaseSaveLoadDialog(QtWidgets.QDialog):
     """
     A base class for save /import blueprint dialog.
     """
@@ -147,7 +153,7 @@ class AbstractBlueprintDialog(QtWidgets.QDialog):
     setting_file_updated_signal = QtCore.Signal()
 
     def __init__(self, parentDialog=None):
-        super(AbstractBlueprintDialog, self).__init__()
+        super(BaseSaveLoadDialog, self).__init__()
         loadUi(self._uifile, self)
         self.parentDialog = parentDialog
         self.initUI()
@@ -155,12 +161,26 @@ class AbstractBlueprintDialog(QtWidgets.QDialog):
         self.initData()
 
     def initUI(self):
+        icon = IconManager.get("load.png",type="icon")
+        self.browseFolderButton.setIcon(icon)
+
         self.blueprintTreeWidget = BlueprintTreeWidget(self)
 
         self.blueprintListLayout.addWidget(self.blueprintTreeWidget)
 
     def initSignals(self):
         self.baseDirField.textChanged.connect(self.populateBlueprintList)
+        self.browseFolderButton.clicked.connect(self.browseFolder)
+
+    def browseFolder(self):
+        baseDir = settings.getLastOpenedDir()
+        dirPath = QtWidgets.QFileDialog.getExistingDirectory(self, 'Set Dir',
+                                                        baseDir)
+        if dirPath:
+            print "HERE"
+            settings.setLastOpenedDir(dirPath)
+            self.baseDirField.setText(dirPath)
+            self.populateBlueprintList()
 
     def populateBlueprintList(self):
         self.blueprintTreeWidget.clear()
@@ -170,25 +190,25 @@ class AbstractBlueprintDialog(QtWidgets.QDialog):
         if not baseDir.exists():
             return
 
-        for eachFile in baseDir.walkFiles():
+        for eachFile in baseDir.listdir():
             if not eachFile.endswith(BLUEPRINT_EXTENSION):
                 continue
 
             newItem = BlueprintTreeItem(eachFile)
 
+
             if newItem.isValid():
                 self.blueprintTreeWidget.addTopLevelItem(newItem)
+                self.blueprintTreeWidget.setItemWidget(newItem, 2, newItem.deleteButton)
 
-    def updateBlueprintDir(self):
-        baseDir = lib.getBlueprintDir()
-        self.baseDirField.setText(baseDir)
 
     def initData(self):
-        self.updateBlueprintDir()
+        baseDir = settings.getLastOpenedDir()
+        self.baseDirField.setText(baseDir)
         self.populateBlueprintList()
 
 
-class LoadBlueprintDialog(AbstractBlueprintDialog):
+class LoadBlueprintDialog(BaseSaveLoadDialog):
     load_signal = QtCore.Signal(unicode)
     def initUI(self):
         super(LoadBlueprintDialog, self).initUI()
@@ -228,7 +248,7 @@ class LoadBlueprintDialog(AbstractBlueprintDialog):
         self.close()
 
 
-class SaveBlueprintDialog(AbstractBlueprintDialog):
+class SaveBlueprintDialog(BaseSaveLoadDialog):
     saveSignalled = QtCore.Signal(tuple)
 
     def __init__(self, parentDialog):
@@ -246,6 +266,7 @@ class SaveBlueprintDialog(AbstractBlueprintDialog):
         super(SaveBlueprintDialog, self).initSignals()
         self.saveButton.clicked.connect(self.callSaveBlueprint)
         self.cancelButton.clicked.connect(self.close)
+        self.blueprintTreeWidget.itemDoubleClicked.connect(self.callSaveBlueprint)
 
     def callSaveBlueprint(self):
         baseDir = Path(self.baseDirField.text())

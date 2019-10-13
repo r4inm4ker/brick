@@ -41,6 +41,13 @@
            <item>
             <widget class="QLineEdit" name="baseDirField"/>
            </item>
+           <item>
+            <widget class="QPushButton" name="browseFolderButton">
+             <property name="text">
+              <string/>
+             </property>
+            </widget>
+           </item>
           </layout>
          </item>
          <item>

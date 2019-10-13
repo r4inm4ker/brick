@@ -1,3 +1,4 @@
+import json
 import os
 from collections import OrderedDict
 from functools import partial
@@ -30,25 +31,28 @@ class Main_UI(object):
     ui = None
 
 
-class BrickUI(QtWidgets.QWidget):
-    def __init__(self, parent=None):
-        super(BrickUI, self).__init__(parent=parent)
-        self.setWindowTitle("Brick")
-        icon = IconManager.get("brick.png", type="icon")
-        self.setWindowIcon(icon)
-        layout = QtWidgets.QVBoxLayout()
-        layout.setContentsMargins(0, 0, 0, 0)
-        self.setLayout(layout)
-        win = BrickWindow()
-        layout.addWidget(win)
-        self.resize(800,1000)
-
-
-    @classmethod
-    def launch(cls):
-        bui = cls()
-        bui.show()
-        return bui
+# class BrickUI(QtWidgets.QWidget):
+#     def __init__(self, parent=None):
+#         super(BrickUI, self).__init__(parent=parent)
+#         self.setWindowTitle("Brick")
+#         icon = IconManager.get("brick.png", type="icon")
+#         self.setWindowIcon(icon)
+#         layout = QtWidgets.QVBoxLayout()
+#         layout.setContentsMargins(0, 0, 0, 0)
+#         self.setLayout(layout)
+#         win = BrickWindow()
+#         layout.addWidget(win)
+#         self.resize(800,1000)
+#
+#
+#     @classmethod
+#     def launch(cls):
+#         bui = cls()
+#         bui.show()
+#         return bui
+#
+#     def updateTitle(self, titleName):
+#         self.setWindowTitle(titleName)
 
 
 class BrickWindow(QtWidgets.QMainWindow):
@@ -56,14 +60,26 @@ class BrickWindow(QtWidgets.QMainWindow):
         super(BrickWindow, self).__init__(parent=parent)
         Main_UI.ui = self
         self.mainWidget = BrickWidget(mainWindow=self)
-        self.bluePrintWidget = self.mainWidget.blueprintWidget
-        self.blockListWidget = self.bluePrintWidget.blockListWidget
+        self.currentBlueprint = None
+        self.blueprintWidget = self.mainWidget.blueprintWidget
+        self.blockListWidget = self.blueprintWidget.blockListWidget
         self.mainWidget.setContentsMargins(0, 0, 0, 0)
         self.setCentralWidget(self.mainWidget)
         self.menuBar = None
         self._initMenuBar()
         self._initToolBar()
         self._initPropertyDock()
+
+        icon = IconManager.get("brick.png", type="icon")
+        self.setWindowIcon(icon)
+
+        self.updateTitle()
+
+    @classmethod
+    def launch(cls):
+        bui = cls()
+        bui.show()
+        return bui
 
     def _initPropertyDock(self):
         self.editorDock = Editor_Dock()
@@ -92,15 +108,19 @@ class BrickWindow(QtWidgets.QMainWindow):
         self.menuBar.addMenu(menuFile)
 
         action = QtWidgets.QAction('new', self)
-        action.triggered.connect(self.mainWidget.newBlueprint)
+        action.triggered.connect(self.newBlueprintCalled)
         menuFile.addAction(action)
 
-        action = QtWidgets.QAction('load...', self)
-        action.triggered.connect(self.mainWidget.loadBlueprintDialogCalled)
+        action = QtWidgets.QAction('open...', self)
+        action.triggered.connect(self.loadBlueprintDialogCalled)
         menuFile.addAction(action)
 
         action = QtWidgets.QAction('save...', self)
-        action.triggered.connect(self.mainWidget.saveBlueprintDialogCalled)
+        action.triggered.connect(self.saveExistingBlueprintCalled)
+        menuFile.addAction(action)
+
+        action = QtWidgets.QAction('save as...', self)
+        action.triggered.connect(self.saveBlueprintDialogCalled)
         menuFile.addAction(action)
 
         self.recentMenu = QtWidgets.QMenu('recent blueprints', self.menuBar)
@@ -127,36 +147,108 @@ class BrickWindow(QtWidgets.QMainWindow):
                 action.triggered.connect(partial(self.loadBluePrint,filePath))
                 self.recentMenu.addAction(action)
 
+    def updateTitle(self, dirty=False):
+        baseTitle = "Brick ( {path} )"
+        if self.currentBlueprint:
+            title = baseTitle.format(path=self.currentBlueprint)
+        else:
+            title = baseTitle.format(path="Untitled")
+
+        if dirty:
+            title = title+"*"
+
+        self.setWindowTitle(title)
+
 
     def loadBluePrint(self, filePath):
-        self.mainWidget.blueprintWidget.load(filePath)
+        self.blueprintWidget.load(filePath)
         settings.addRecentBlueprint(filePath)
         self.updateRecentFileMenu()
         self.blockListWidget.scrollToTop()
+        self.currentBlueprint = filePath
+        self.updateTitle()
 
-    def saveBluePrint(self, (path, notes)):
+    def saveBluePrint(self, (filePath, notes)):
         # if self.editorWidget.blockWidget:
         #     self.editorWidget.blockWidget.syncData()
-        self.mainWidget.blueprintWidget.builder.saveBlueprint(path, notes)
+        self.blueprintWidget.builder.saveBlueprint(filePath, notes)
+        self.currentBlueprint = filePath
+        log.info("Blueprint saved : {}".format(filePath))
+        self.updateTitle()
 
     def _initToolBar(self):
         toolBar = QtWidgets.QToolBar()
 
         icon = IconManager.get("new.png", type="icon")
         action = toolBar.addAction(icon, "new blueprint")
-        action.triggered.connect(self.mainWidget.newBlueprint)
+        action.triggered.connect(self.newBlueprintCalled)
 
         icon = IconManager.get("open.png", type="icon")
         action = toolBar.addAction(icon, "open blueprint")
-        action.triggered.connect(self.mainWidget.loadBlueprintDialogCalled)
-
+        action.triggered.connect(self.loadBlueprintDialogCalled)
 
         icon = IconManager.get("save.png", type="icon")
         action = toolBar.addAction(icon, "save blueprint")
-        action.triggered.connect(self.mainWidget.saveBlueprintDialogCalled)
-
+        action.triggered.connect(self.saveExistingBlueprintCalled)
 
         self.addToolBar(toolBar)
+
+    def saveExistingBlueprintCalled(self):
+        if not self.currentBlueprint:
+            self.saveBlueprintDialogCalled()
+        else:
+            confirm = QtWidgets.QMessageBox.question(None,
+                                                     'Message',
+                                                     "Overwrite {} ?".format(self.currentBlueprint),
+                                                     QtWidgets.QMessageBox.Save | QtWidgets.QMessageBox.No | QtWidgets.QMessageBox.Cancel,
+                                                     QtWidgets.QMessageBox.No)
+
+            if confirm == QtWidgets.QMessageBox.No:
+                self.saveBlueprintDialogCalled()
+            elif confirm == QtWidgets.QMessageBox.Save:
+                with open(self.currentBlueprint, 'r') as fd:
+                    data = json.load(fd, object_pairs_hook=OrderedDict)
+                    notes = data.get("notes")
+                self.saveBluePrint((self.currentBlueprint, notes))
+
+    def saveBlueprintDialogCalled(self):
+        ui = ioDialog.SaveBlueprintDialog(self)
+        ui.setting_file_updated_signal.connect(self.updateRecentFileMenu)
+        ui.saveSignalled.connect(self.saveBluePrint)
+        ui.exec_()
+
+    def loadBlueprintDialogCalled(self):
+        ui = ioDialog.LoadBlueprintDialog(self)
+        ui.setting_file_updated_signal.connect(self.updateRecentFileMenu)
+        ui.load_signal.connect(self.loadBluePrint)
+        ui.exec_()
+
+    def newBlueprintCalled(self):
+        confirm = QtWidgets.QMessageBox.question(None,
+                                                 'Message',
+                                                 "save current blueprint?",
+                                                 QtWidgets.QMessageBox.Save | QtWidgets.QMessageBox.No | QtWidgets.QMessageBox.Cancel,
+                                                 QtWidgets.QMessageBox.No)
+
+        if confirm == QtWidgets.QMessageBox.No:
+            self.blueprintWidget.initDefault()
+        elif confirm == QtWidgets.QMessageBox.Save:
+            self.saveBlueprintDialogCalled()
+
+    def closeEvent(self, *args, **kwargs):
+        confirm = QtWidgets.QMessageBox.question(None,
+                                             'Message',
+                                             "save current blueprint?",
+                                             QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No | QtWidgets.QMessageBox.Cancel,
+                                             QtWidgets.QMessageBox.No)
+        if confirm == QtWidgets.QMessageBox.No:
+            super(BrickWindow, self).closeEvent(*args, **kwargs)
+        elif confirm == QtWidgets.QMessageBox.Yes:
+            self.saveBlueprintDialogCalled()
+            super(BrickWindow, self).closeEvent(*args, **kwargs)
+
+
+
 
 class BrickWidget(QtWidgets.QWidget):
     def __init__(self, mainWindow=None, parent=None):
@@ -164,12 +256,6 @@ class BrickWidget(QtWidgets.QWidget):
         self.mainWindow = mainWindow
         self.blueprintWidget = None
         self._initUI()
-        # self.populateBlocks()
-        self.__test()
-
-    def __test(self):
-        pass
-        # self.blueprintWidget.load(r"E:\git\brick\brick\test\templates\debug.json")
 
     def _initUI(self):
         layout = VBoxLayout(self)
@@ -204,45 +290,9 @@ class BrickWidget(QtWidgets.QWidget):
                         lwidget.addItem(item)
             qcreate(Spacer, mode="vertical")
 
-    def saveBlueprintDialogCalled(self):
-        ui = ioDialog.SaveBlueprintDialog(self)
-        ui.setting_file_updated_signal.connect(self.mainWindow.updateRecentFileMenu)
-        ui.saveSignalled.connect(self.mainWindow.saveBluePrint)
-        ui.exec_()
 
-    def loadBlueprintDialogCalled(self):
-        ui = ioDialog.LoadBlueprintDialog(self)
 
-        ui.setting_file_updated_signal.connect(self.mainWindow.updateRecentFileMenu)
-        ui.load_signal.connect(self.mainWindow.loadBluePrint)
 
-        ui.exec_()
-
-    def newBlueprint(self):
-        confirm = QtWidgets.QMessageBox.question(None,
-                                                 'Message',
-                                                 "save current blueprint?",
-                                                 QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
-                                                 QtWidgets.QMessageBox.No)
-
-        if confirm == QtWidgets.QMessageBox.No:
-            self.blueprintWidget.initDefault()
-        elif confirm == QtWidgets.QMessageBox.Yes:
-            sui = ioDialog.SaveBlueprintDialog(self)
-            sui.exec_()
-
-    def closeEvent(self, *args, **kwargs):
-        confirm = QtWidgets.QMessageBox.question(None,
-                                             'Message',
-                                             "save current blueprint?",
-                                             QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
-                                             QtWidgets.QMessageBox.No)
-        if confirm == QtWidgets.QMessageBox.No:
-            super(BrickWidget, self).closeEvent(*args, **kwargs)
-        elif confirm == QtWidgets.QMessageBox.Yes:
-            sui = ioDialog.SaveBlueprintDialog(self)
-            sui.exec_()
-            super(BrickWidget, self).closeEvent(*args, **kwargs)
 
 
 class BlockMenuListWidget(QtWidgets.QListWidget):
@@ -256,17 +306,7 @@ class BlockMenuListWidget(QtWidgets.QListWidget):
     def mousePressEvent(self, event, *args, **kwargs):
         widget = Main_UI.ui.blockListWidget
         Main_UI.ui.blockListWidget.setDragDropMode(widget.DragDrop)
-
         return super(BlockMenuListWidget, self).mousePressEvent(event)
-
-
-    def mouseMoveEvent(self, event):
-
-
-
-        return super(BlockMenuListWidget, self).mouseMoveEvent(event)
-
-
 
     def mimeData(self, items):
         data = super(BlockMenuListWidget,self).mimeData(items)
@@ -381,13 +421,6 @@ class BlueprintWidget(QtWidgets.QWidget):
         self.refreshHeaderAttrs()
         blockOrders = [wg.block.name for wg in self.blockListWidget.blockWidgets]
 
-        # print "orders: \n"
-        # for name in blockOrders:
-        #     print name
-        #
-        # print "\n\n"
-
-
         self.builder.syncOrder(blockOrders)
 
     def itemOrderChanged(self):
@@ -396,8 +429,6 @@ class BlueprintWidget(QtWidgets.QWidget):
 
     @property
     def nextStep(self):
-        # self.syncBuilder()
-
         try:
             nextStep = self.builder.nextStep
         except AttributeError:
@@ -415,19 +446,16 @@ class BlueprintWidget(QtWidgets.QWidget):
                 return widget
 
     def rewind(self):
-        # self.syncBuilder()
         self.builder.reset()
         self.refreshIndicator()
         self.blockListWidget.scrollToTop()
 
     def stepBack(self):
-        # self.syncBuilder()
         if self.builder.nextStep > 0:
             self.builder.nextStep -= 1
         self.refreshIndicator()
 
     def stepForward(self):
-        # self.syncBuilder()
         if self.builder.nextStep < len(self.blockListWidget.blockWidgets):
             self.builder.nextStep += 1
         self.refreshIndicator()
@@ -441,9 +469,6 @@ class BlueprintWidget(QtWidgets.QWidget):
             self.builder.attrs[name] = value
 
     def buildNext(self):
-        # self.syncBuilder()
-        self.refreshHeaderAttrs()
-        # self.refreshNextBlock()
         ret = self.builder.buildNext()
         self.refreshIndicator()
         if self.nextWidget:
@@ -452,7 +477,6 @@ class BlueprintWidget(QtWidgets.QWidget):
         return ret
 
     def fastForward(self):
-        # self.syncBuilder()
         progressDialog = QtWidgets.QProgressDialog("Running...","Abort",0, 100, self)
         progressDialog.show()
         progress = 0
@@ -487,16 +511,10 @@ class BlueprintWidget(QtWidgets.QWidget):
 
     def insertBlock(self, block, index=-1):
         self.blockListWidget.insertBlock(block, index=index)
-        # TODO: find a more reliable way to do this (init indicator)
-        # self.refreshIndicator()
-        log.info("added: {0}".format(self.builder.blocks))
+        log.debug("added: {0}".format(self.builder.blocks))
 
     def addBlock(self, block):
-        return self.blockListWidget.insertBlock(block)
-
-    def deleteBlock(self, block):
-        self.builder.blocks.remove(block)
-        log.info("deleted: {0}".format(self.builder.blocks))
+        return self.insertBlock(block)
 
     def runItemCallback(self, item):
         index = self.blockListWidget.indexFromItem(item).row()
@@ -504,36 +522,34 @@ class BlueprintWidget(QtWidgets.QWidget):
         self.buildNext()
 
 
-
-class BlockMenuWidget(QtWidgets.QWidget):
-    def __init__(self, parent=None):
-        super(BlockMenuWidget, self).__init__(parent=parent)
-        self.setContentsMargins(0, 0, 0, 0)
-        layout = QtWidgets.QHBoxLayout()
-        self.setLayout(layout)
-        label = QtWidgets.QLabel("+")
-        layout.addWidget(label)
-
-        menuBar = QtWidgets.QMenuBar()
-
-        blockMap = lib.collectBlocksByCategory()
-
-        for category, opclasses in blockMap.items():
-            categoryMenu = QtWidgets.QMenu(category, menuBar)
-            categoryMenu.setStyleSheet("QMenu {border: 1px solid black;}")
-            menuBar.addMenu(categoryMenu)
-
-            for opcls in opclasses:
-                action = QtWidgets.QAction(opcls.__name__, self)
-                # action.triggered.connect(partial(self.addBlockByType, opcls.__name__))
-                categoryMenu.addAction(action)
-
-        layout.addWidget(menuBar)
-
-    @property
-    def blueprintWidget(self):
-        return self.parentWidget()
-
+# class BlockMenuWidget(QtWidgets.QWidget):
+#     def __init__(self, parent=None):
+#         super(BlockMenuWidget, self).__init__(parent=parent)
+#         self.setContentsMargins(0, 0, 0, 0)
+#         layout = QtWidgets.QHBoxLayout()
+#         self.setLayout(layout)
+#         label = QtWidgets.QLabel("+")
+#         layout.addWidget(label)
+#
+#         menuBar = QtWidgets.QMenuBar()
+#
+#         blockMap = lib.collectBlocksByCategory()
+#
+#         for category, opclasses in blockMap.items():
+#             categoryMenu = QtWidgets.QMenu(category, menuBar)
+#             categoryMenu.setStyleSheet("QMenu {border: 1px solid black;}")
+#             menuBar.addMenu(categoryMenu)
+#
+#             for opcls in opclasses:
+#                 action = QtWidgets.QAction(opcls.__name__, self)
+#                 # action.triggered.connect(partial(self.addBlockByType, opcls.__name__))
+#                 categoryMenu.addAction(action)
+#
+#         layout.addWidget(menuBar)
+#
+#     @property
+#     def blueprintWidget(self):
+#         return self.parentWidget()
 
 
 class BlockListWidget(QtWidgets.QListWidget):
@@ -678,7 +694,7 @@ class BlockListWidget(QtWidgets.QListWidget):
     def deleteBlock(self, block):
         self.builder.blocks.remove(block)
         self.blueprintWidget.syncBuilder()
-        log.info("deleted: {0}".format(self.builder.blocks))
+        log.debug("deleted: {0}".format(self.builder.blocks))
 
 class BlockItem(QtWidgets.QListWidgetItem):
     pass
@@ -767,7 +783,9 @@ class AttrTree(QtWidgets.QTreeWidget):
         self.addTopLevelItem(attrItem)
         attrItem.setFlags(attrItem.flags() ^ QtCore.Qt.ItemIsSelectable)
         attrItem.setWidget()
-        # self._parent.sizeUp()
+
+        if hasattr(self._parent,"sizeUp"):
+            self._parent.sizeUp()
 
     def setAttr(self, key, val):
         for item in self.allItems():
@@ -1062,5 +1080,5 @@ class Editor_Dock(QtWidgets.QDockWidget):
 
 
 def ui():
-    ui = BrickUI.launch()
+    ui = BrickWindow.launch()
     return ui

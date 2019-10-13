@@ -1,4 +1,4 @@
-# syntax.py
+# copied from https://wiki.python.org/moin/PyQt/Python%20syntax%20highlighting
 
 import sys
 
@@ -25,15 +25,15 @@ def format(color, style=''):
 
 # Syntax styles that can be shared by all languages
 STYLES = {
-    'keyword': format('blue'),
-    'operator': format('red'),
-    'brace': format('darkGray'),
-    'defclass': format('black', 'bold'),
-    'string': format('magenta'),
-    'string2': format('darkMagenta'),
-    'comment': format('darkGreen', 'italic'),
+    'keyword': format('orange'),
+    'operator': format('floralwhite'),
+    'brace': format('floralwhite'),
+    'defclass': format('white', 'bold'),
+    'string': format('darkseagreen'),
+    'string2': format('darkseagreen'),
+    'comment': format('darkGray', 'italic'),
     'self': format('black', 'italic'),
-    'numbers': format('brown'),
+    'numbers': format('aquamarine'),
 }
 
 
@@ -47,7 +47,7 @@ class PythonHighlighter (QSyntaxHighlighter):
         'for', 'from', 'global', 'if', 'import', 'in',
         'is', 'lambda', 'not', 'or', 'pass', 'print',
         'raise', 'return', 'try', 'while', 'yield',
-        'None', 'True', 'False',
+        'None', 'True', 'False', 'as',
     ]
 
     # Python operators

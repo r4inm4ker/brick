@@ -70,6 +70,11 @@ def getLastOpenedDir():
 
     return lastDir
 
+def setLastOpenedDir(dirPath):
+    data = getHistoryData()
+    data[Settings.Last_Opened_Dir] = dirPath
+    writeHistoryFile(data)
+
 
 def addRecentBlueprint(filePath):
     filePath = Path(filePath).normcase()
@@ -88,7 +93,7 @@ def addRecentBlueprint(filePath):
     if index >= 0:
         data[Settings.Recent_Files].pop(index)
 
-    data[Settings.Recent_Files].append(str(filePath.normcase()))
+    data[Settings.Recent_Files].insert(0,str(filePath.normcase()))
 
     if len(data[Settings.Recent_Files]) > Settings.Max_Files_Length:
         data[Settings.Recent_Files] = data[Settings.Recent_Files][1:]
