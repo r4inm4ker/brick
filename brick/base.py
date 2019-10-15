@@ -311,12 +311,6 @@ class Block(object):
                 setattr(self, attrName, value)
 
 
-        # self.name = data.get('name')
-        # self.notes = data.get('notes')
-        # self.attrs = data.get('attrs')
-        # self.inputs = data.get('inputs',{})
-        # self.active = data.get('active',True)
-
     def reset(self):
         self.buildStatus = BuildStatus.nothing
         self.runTimeAttrs = {}

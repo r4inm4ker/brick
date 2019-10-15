@@ -131,7 +131,7 @@ class BlueprintTreeItem(QtWidgets.QTreeWidgetItem):
             self.setSizeHint(2, QtCore.QSize(15, 15))
 
     def isValid(self):
-        return all([self._name, self._notes])
+        return all([self._name])
 
     def removeItem(self):
         reply = QtWidgets.QMessageBox.question(None,
@@ -177,7 +177,6 @@ class BaseSaveLoadDialog(QtWidgets.QDialog):
         dirPath = QtWidgets.QFileDialog.getExistingDirectory(self, 'Set Dir',
                                                         baseDir)
         if dirPath:
-            print "HERE"
             settings.setLastOpenedDir(dirPath)
             self.baseDirField.setText(dirPath)
             self.populateBlueprintList()
@@ -195,7 +194,6 @@ class BaseSaveLoadDialog(QtWidgets.QDialog):
                 continue
 
             newItem = BlueprintTreeItem(eachFile)
-
 
             if newItem.isValid():
                 self.blueprintTreeWidget.addTopLevelItem(newItem)
@@ -271,9 +269,9 @@ class SaveBlueprintDialog(BaseSaveLoadDialog):
     def callSaveBlueprint(self):
         baseDir = Path(self.baseDirField.text())
         blueprintName = Path(self.blueprintNameField.text())
-        notes = self.notesField.toPlainText()
+        notes = self.notesField.toPlainText() or ""
 
-        if not all([baseDir, blueprintName, notes]):
+        if not all([baseDir, blueprintName]):
             log.warn("please fill all input fields.")
             return
 

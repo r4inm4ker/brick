@@ -20,6 +20,8 @@ from brick.ui import saveLoadBlueprintDialog as ioDialog
 
 from brick import settings
 
+from brick.attrtype import Input
+
 from brick.lib.path import Path
 
 from brick.ui import IconManager
@@ -248,8 +250,6 @@ class BrickWindow(QtWidgets.QMainWindow):
             super(BrickWindow, self).closeEvent(*args, **kwargs)
 
 
-
-
 class BrickWidget(QtWidgets.QWidget):
     def __init__(self, mainWindow=None, parent=None):
         super(BrickWidget, self).__init__(parent=parent)
@@ -289,10 +289,6 @@ class BrickWidget(QtWidgets.QWidget):
                         item.setSizeHint(QtCore.QSize(100,30))
                         lwidget.addItem(item)
             qcreate(Spacer, mode="vertical")
-
-
-
-
 
 
 class BlockMenuListWidget(QtWidgets.QListWidget):
@@ -753,7 +749,7 @@ class AttrTree(QtWidgets.QTreeWidget):
     }
     """
     _headers = ('attribute', 'value')
-
+    attrEdited = QtCore.Signal()
     def __init__(self, parent=None):
         super(AttrTree, self).__init__(parent=parent)
         self._parent = parent
@@ -801,10 +797,10 @@ class AttrTree(QtWidgets.QTreeWidget):
 
         return items
 
-    def addInput(self, inputData):
-        inputItem = AttrItem(inputData)
-        self.addTopLevelItem(inputItem)
-        inputItem.setWidget()
+    # def addInput(self, inputData):
+    #     inputItem = AttrItem(inputData)
+    #     self.addTopLevelItem(inputItem)
+    #     inputItem.setWidget()
         # self._parent.sizeUp()
 
     def removeSelectedAttr(self):
@@ -817,6 +813,7 @@ class AttrTree(QtWidgets.QTreeWidget):
                                              QtWidgets.QMessageBox.No)
             if confirm == QtWidgets.QMessageBox.Yes:
                 self.removeAttr(currItem)
+                self.emitAttrSignal()
 
     def removeAttr(self, attrItem):
         idx = self.indexOfTopLevelItem(attrItem)
@@ -824,10 +821,15 @@ class AttrTree(QtWidgets.QTreeWidget):
         log.info('take attribute: {0}'.format(attrItem))
 
     def showAddInputDialog(self):
-        AddInputDialog(parent=self)
+        dialog = AddInputDialog(parent=self)
+        dialog.attrAdded.connect(self.emitAttrSignal)
 
     def showAddAttrDialog(self):
-        AddAttrDialog(parent=self)
+        dialog = AddAttrDialog(parent=self)
+        dialog.attrAdded.connect(self.emitAttrSignal)
+
+    def emitAttrSignal(self):
+        self.attrEdited.emit()
 
     def attrs(self):
         labels = []
@@ -875,7 +877,7 @@ class AttrItem(QtWidgets.QTreeWidgetItem):
 class AddAttrDialog(QtWidgets.QDialog):
     # TODO need refactor
     WINDOW_TITLE = "Add Attr"
-
+    attrAdded = QtCore.Signal()
     def __init__(self, parent=None):
         super(AddAttrDialog, self).__init__(parent=parent)
         self.__resourceName = ""
@@ -937,13 +939,15 @@ class AddAttrDialog(QtWidgets.QDialog):
 
         self.parentWidget().addAttr((attrName, (attrType, defaultValue)))
 
+        self.attrAdded.emit()
+
         self.close()
 
 
 class AddInputDialog(QtWidgets.QDialog):
     # TODO need refactor
     WINDOW_TITLE = "Add Attr"
-
+    attrAdded = QtCore.Signal()
     def __init__(self, parent=None):
         super(AddInputDialog, self).__init__(parent=parent)
         self.__resourceName = ""
@@ -995,6 +999,7 @@ class AddInputDialog(QtWidgets.QDialog):
         attrType = attrtype.Input
         defaultValue = None
         self.parentWidget().addAttr((attrName, (attrType, defaultValue)))
+        self.attrAdded.emit()
         self.close()
 
 
@@ -1010,7 +1015,6 @@ class Block_Editor_Widget(QtWidgets.QWidget):
 
     def syncData(self):
         if self.blockWidget:
-
             self.blockWidget.syncData()
 
     def clear(self):
@@ -1025,7 +1029,9 @@ class Block_Editor_Widget(QtWidgets.QWidget):
         self.blockWidget = blockWidget
         self.blockWidget.editorWidget = self
         self.attrTree = AttrTree(self)
+        self.attrTree.attrEdited.connect(self.syncData)
         self.layout().addWidget(self.attrTree)
+
 
         block = self.block
 
@@ -1044,10 +1050,9 @@ class Block_Editor_Widget(QtWidgets.QWidget):
                 data = (key, (attrType, val))
                 self.attrTree.addAttr(data)
 
-        for key, val in block.inputs.iteritems():
-            if key not in self.attrTree.attrs():
-                data = (key, (type(val), val))
-                self.attrTree.addAttr(data)
+        for key, val in block.inputs.items():
+            data = (key, (Input, val))
+            self.attrTree.addAttr(data)
 
     def getData(self):
         data = {}
@@ -1060,8 +1065,7 @@ class Block_Editor_Widget(QtWidgets.QWidget):
                 name = item.getName()
                 value = item.getValue()
 
-                if item.attrType == attrtype.Input:
-
+                if item.attrType == Input:
                     data['inputs'][name] = value
 
                 else:

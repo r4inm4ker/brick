@@ -49,15 +49,12 @@ class ScriptField(AttrField, QtWidgets.QWidget):
     def openScriptEditor(self):
         currentScript = self.scriptField.text()
         convertedScript = attrtype.Script(currentScript.replace(r'\n', '\n'))
-        editor = ScriptEditor(convertedScript, self)
-        editor.exec_()
+        self._sui = ScriptEditor(convertedScript, self)
+        self._sui.show()
 
     def getValue(self):
         val = self.scriptField.text()
         return attrtype.Script(val.replace(r'\n', '\n'))
-
-
-
 
 
 class IntField(AttrField, QtWidgets.QLineEdit):
@@ -84,6 +81,7 @@ class IntField(AttrField, QtWidgets.QLineEdit):
         except ValueError:
             pass
         return retVal
+
 
 class BoolField(AttrField, QtWidgets.QLineEdit):
     True_ = str(True)
