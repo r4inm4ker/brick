@@ -135,9 +135,18 @@ class BrickWindow(QtWidgets.QMainWindow):
         action.setEnabled(False)
         menuWindow.addAction(action)
 
+        action = QtWidgets.QAction('About', self)
+        action.triggered.connect(self.showAboutDialog)
+        menuWindow.addAction(action)
+
         self.setMenuBar(self.menuBar)
 
         self.updateRecentFileMenu()
+
+    def showAboutDialog(self):
+        from brick.ui.components.about import About_Dialog
+        dialog = About_Dialog(self)
+        dialog.exec_()
 
     def updateRecentFileMenu(self):
         data = settings.getHistoryData()
@@ -179,7 +188,7 @@ class BrickWindow(QtWidgets.QMainWindow):
         self.updateTitle()
 
     def _initToolBar(self):
-        toolBar = QtWidgets.QToolBar()
+        toolBar = QtWidgets.QToolBar(self)
 
         icon = IconManager.get("new.png", type="icon")
         action = toolBar.addAction(icon, "new blueprint")

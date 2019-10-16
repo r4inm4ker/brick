@@ -92,16 +92,22 @@ class BlockWidget(BaseBlockWidget):
                     self.blockNameField = qcreate(StringField)
                     # qcreate(Spacer)
                     # self.annotationBtn = qcreate(Button,"?")
-
-                    self.runBlockButton = qcreate(Button, ">")
+                    # icon = IconManager.get("play.svg", type="icon")
+                    # self.runBlockButton = qcreate(Button, icon, "")
 
                     qcreate(Spacer)
 
 
                 with qcreate(VBoxLayout):
-                    icon = IconManager.get("delete.svg", type="icon")
-                    self.deleteButton = qcreate(Button, "",icon=icon)
-                    self.deleteButton.setFixedSize(QtCore.QSize(15,15))
+                    with qcreate(HBoxLayout):
+                        icon = IconManager.get("play.svg", type="icon")
+                        self.runBlockButton = qcreate(Button, icon, "")
+
+                        qcreate(QtWidgets.QLabel,"  ")
+
+                        icon = IconManager.get("delete.svg", type="icon")
+                        self.deleteButton = qcreate(Button, "",icon=icon)
+                        self.deleteButton.setFixedSize(QtCore.QSize(15,15))
 
 
                     # self.runBlockButton = qcreate(Button,">")
@@ -110,11 +116,14 @@ class BlockWidget(BaseBlockWidget):
 
             qcreate(SeparatorLine)
 
-        self.setEnableDisplay(True)
+        # self.setEnableDisplay(True)
 
 
         self.blockTypeLabel.setText(self.block.__class__.__name__)
         self.blockNameField.setValue(self.block.name)
+        self.activeCheckBox.setValue(self.block.active)
+        self.setEnableDisplay(self.block.active)
+
 
     def _connectSignals(self):
         super(BlockWidget, self)._connectSignals()
@@ -187,7 +196,10 @@ class BreakPointWidget(BaseBlockWidget):
             qcreate(SeparatorLine)
 
 
-        self.setEnableDisplay(True)
+        # self.setEnableDisplay(True)
+
+        self.activeCheckBox.setValue(self.block.active)
+        self.setEnableDisplay(self.block.active)
 
 
     def setEnableDisplay(self, enabled):
