@@ -119,7 +119,7 @@ class BlockWidget(BaseBlockWidget):
         # self.setEnableDisplay(True)
 
 
-        self.blockTypeLabel.setText(self.block.__class__.__name__)
+        self.blockTypeLabel.setText("{} : ".format(self.block.__class__.__name__))
         self.blockNameField.setValue(self.block.name)
         self.activeCheckBox.setValue(self.block.active)
         self.setEnableDisplay(self.block.active)

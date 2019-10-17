@@ -32,6 +32,19 @@ UIDIR = os.path.dirname(__file__)
 class Main_UI(object):
     ui = None
 
+def getMainWindow(widget):
+    currParent = widget
+    while True:
+        if not currParent:
+            return None
+
+        elif isinstance(currParent, BrickWindow):
+            return currParent
+
+        else:
+            currParent = currParent.parentWidget()
+
+
 
 # class BrickUI(QtWidgets.QWidget):
 #     def __init__(self, parent=None):
@@ -58,10 +71,11 @@ class Main_UI(object):
 
 
 class BrickWindow(QtWidgets.QMainWindow):
+    WindowName = "BrickWindowUI"
     def __init__(self, parent=None):
         super(BrickWindow, self).__init__(parent=parent)
-        Main_UI.ui = self
         self.mainWidget = BrickWidget(mainWindow=self)
+        self.setObjectName(self.WindowName)
         self.currentBlueprint = None
         self.blueprintWidget = self.mainWidget.blueprintWidget
         self.blockListWidget = self.blueprintWidget.blockListWidget
@@ -309,8 +323,9 @@ class BlockMenuListWidget(QtWidgets.QListWidget):
         self.setSelectionMode(self.ExtendedSelection)
 
     def mousePressEvent(self, event, *args, **kwargs):
-        widget = Main_UI.ui.blockListWidget
-        Main_UI.ui.blockListWidget.setDragDropMode(widget.DragDrop)
+        mainWindow = getMainWindow(self)
+        widget = mainWindow.blockListWidget
+        mainWindow.blockListWidget.setDragDropMode(widget.DragDrop)
         return super(BlockMenuListWidget, self).mousePressEvent(event)
 
     def mimeData(self, items):
@@ -337,35 +352,40 @@ class BlueprintWidget(QtWidgets.QWidget):
         self.setContentsMargins(0, 0, 0, 0)
         layout = VBoxLayout(self)
         with layout:
-            self.headerWidget = qcreate(HeaderWidget)
-            # self.blockMenu = qcreate(BlockMenuWidget,self)
+            splitter = qcreate(Splitter,mode="vertical")
+            with splitter:
 
-            label = qcreate(QtWidgets.QLabel,"Blueprint: ")
-            label.setAlignment(QtCore.Qt.AlignHCenter)
+                self.headerWidget = qcreate(HeaderWidget)
+                # self.blockMenu = qcreate(BlockMenuWidget,self)
 
-            self.blockListWidget = qcreate(BlockListWidget, blueprintWidget=self)
-            with qcreate(HBoxLayout):
-                icon = IconManager.get("rewind.png", type="icon")
-                self.rewindButton = qcreate(Button,icon,"")
-                self.rewindButton.setMinimumHeight(25)
+                w2 = qcreate(QtWidgets.QWidget, layoutType=VBoxLayout)
+                with w2.layout():
+                    label = qcreate(QtWidgets.QLabel,"Blueprint: ")
+                    label.setAlignment(QtCore.Qt.AlignHCenter)
 
-                icon = IconManager.get("step_back.png", type="icon")
-                self.stepBackButton = qcreate(Button, icon, "")
-                self.stepBackButton.setMinimumHeight(25)
-                self.stepBackButton.setMaximumWidth(30)
+                    self.blockListWidget = qcreate(BlockListWidget, blueprintWidget=self)
+                    with qcreate(HBoxLayout):
+                        icon = IconManager.get("rewind.png", type="icon")
+                        self.rewindButton = qcreate(Button,icon,"")
+                        self.rewindButton.setMinimumHeight(25)
 
-                icon = IconManager.get("build_next.png", type="icon")
-                self.buildNextButton = qcreate(Button, icon, "")
-                self.buildNextButton.setMinimumHeight(25)
+                        icon = IconManager.get("step_back.png", type="icon")
+                        self.stepBackButton = qcreate(Button, icon, "")
+                        self.stepBackButton.setMinimumHeight(25)
+                        self.stepBackButton.setMaximumWidth(30)
 
-                icon = IconManager.get("step_forward.png", type="icon")
-                self.stepForwardButton = qcreate(Button, icon, "")
-                self.stepForwardButton.setMinimumHeight(25)
-                self.stepForwardButton.setMaximumWidth(30)
+                        icon = IconManager.get("build_next.png", type="icon")
+                        self.buildNextButton = qcreate(Button, icon, "")
+                        self.buildNextButton.setMinimumHeight(25)
 
-                icon = IconManager.get("fast_forward.png", type="icon")
-                self.fastForwardButton = qcreate(Button, icon, "")
-                self.fastForwardButton.setMinimumHeight(25)
+                        icon = IconManager.get("step_forward.png", type="icon")
+                        self.stepForwardButton = qcreate(Button, icon, "")
+                        self.stepForwardButton.setMinimumHeight(25)
+                        self.stepForwardButton.setMaximumWidth(30)
+
+                        icon = IconManager.get("fast_forward.png", type="icon")
+                        self.fastForwardButton = qcreate(Button, icon, "")
+                        self.fastForwardButton.setMinimumHeight(25)
 
     def _connectSignals(self):
         self.rewindButton.clicked.connect(self.rewind)
@@ -716,13 +736,18 @@ class HeaderWidget(QtWidgets.QWidget):
         loadUi(self._uifile, self)
 
         self.attrTree = AttrTree(self)
-
+        self.attrTree.attrEdited.connect(self.syncData)
         self.attrTreeLayout.addWidget(self.attrTree)
+
+    def syncData(self):
+        mainWindow = getMainWindow(self)
+        mainWindow.blueprintWidget.refreshHeaderAttrs()
 
     def initAttrs(self, builder):
         if not hasattr(builder, 'attrs') or not getattr(builder, 'attrs'):
             for attrData in builder.fixedAttrs:
                 self.attrTree.addAttr(attrData)
+                # self.attrTree.attrEdited.connect(self.syncData)
 
     def loadAttrs(self, builder):
         for key, val in builder.attrs.iteritems():
@@ -777,6 +802,11 @@ class AttrTree(QtWidgets.QTreeWidget):
         action.triggered.connect(self.showAddInputDialog)
         self.menu.addAction(action)
 
+        action = QtWidgets.QAction('rename attr/input', self)
+        action.triggered.connect(self.renameAttrDialog)
+        action.setEnabled(False)
+        self.menu.addAction(action)
+
         action = QtWidgets.QAction('remove attr/input', self)
         action.triggered.connect(self.removeSelectedAttr)
         self.menu.addAction(action)
@@ -784,7 +814,7 @@ class AttrTree(QtWidgets.QTreeWidget):
         self.menu.exec_(event.globalPos())
 
     def addAttr(self, attrData):
-        attrItem = AttrItem(attrData)
+        attrItem = AttrItem(attrData, parentWidget = self)
         self.addTopLevelItem(attrItem)
         attrItem.setFlags(attrItem.flags() ^ QtCore.Qt.ItemIsSelectable)
         attrItem.setWidget()
@@ -829,6 +859,9 @@ class AttrTree(QtWidgets.QTreeWidget):
         self.takeTopLevelItem(idx)
         log.info('take attribute: {0}'.format(attrItem))
 
+    def renameAttrDialog(self):
+        pass
+
     def showAddInputDialog(self):
         dialog = AddInputDialog(parent=self)
         dialog.attrAdded.connect(self.emitAttrSignal)
@@ -850,9 +883,9 @@ class AttrTree(QtWidgets.QTreeWidget):
 
 
 class AttrItem(QtWidgets.QTreeWidgetItem):
-    def __init__(self, itemData):
+    def __init__(self, itemData, parentWidget = None):
         super(AttrItem, self).__init__()
-
+        self.parentWidget = parentWidget
         attrName, (attrType, defaultValue) = itemData
 
         self.attrType = attrType
@@ -864,7 +897,9 @@ class AttrItem(QtWidgets.QTreeWidgetItem):
         if defaultValue is not None and defaultValue != '':
             self.fieldWidget.setValue(defaultValue)
 
-        self.fieldWidget.editFinished.connect(Main_UI.ui.editorWidget.syncData)
+        mainWindow = getMainWindow(self.parentWidget)
+        self.fieldWidget.editFinished.connect(mainWindow.editorWidget.syncData)
+        self.fieldWidget.editFinished.connect(mainWindow.blueprintWidget.refreshHeaderAttrs)
 
     @property
     def attrName(self):
@@ -932,8 +967,8 @@ class AddAttrDialog(QtWidgets.QDialog):
         self.setLayout(mainLayout)
 
     def initSignals(self):
-        self.__addButton.released.connect(self._addAttr)
-        self.__closeButton.released.connect(self.close)
+        self.__addButton.clicked.connect(self._addAttr)
+        self.__closeButton.clicked.connect(self.close)
 
     def _addAttr(self):
         attrName = self.__attrNameInput.text()

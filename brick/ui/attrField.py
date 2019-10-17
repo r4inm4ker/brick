@@ -227,10 +227,14 @@ class BlockInputField(AttrField, QtWidgets.QWidget):
         layout.addWidget(label)
         self.blockField = QtWidgets.QLineEdit()
         layout.addWidget(self.blockField)
+        self.blockField.editingFinished.connect(self.emitSignal)
+
         label = QtWidgets.QLabel("attr:")
         layout.addWidget(label)
         self.attrField = QtWidgets.QLineEdit()
         self.attrField.setText("results")
+        self.attrField.editingFinished.connect(self.emitSignal)
+
         layout.addWidget(self.attrField)
 
     def getValue(self):
