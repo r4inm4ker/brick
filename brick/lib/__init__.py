@@ -16,12 +16,14 @@ class classproperty(object):
 def getBlueprintDir():
     return "E:/git/brick/brick/test/templates"
 
+
 def getBuildDir():
     """
     get build directory path in sandbox.
     """
     import tempfile
     return tempfile.gettempdir()
+
 
 def loadData(blueprintPath):
     """

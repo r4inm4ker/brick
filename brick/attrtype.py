@@ -15,3 +15,5 @@ class Input(tuple):
 class Script(unicode):
     pass
 
+class Path(unicode):
+    pass

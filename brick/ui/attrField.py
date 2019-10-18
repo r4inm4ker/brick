@@ -1,8 +1,11 @@
+import json
 from qqt import QtCore, QtWidgets, QtGui
 from qqt.gui import qcreate, HBoxLayout, VBoxLayout, Button
 from brick import attrtype
 from brick.ui import IconManager
 from brick.ui.components.script_editor import ScriptEditor
+from brick.lib.path import Path
+from collections import OrderedDict
 
 class AttrField(object):
     editFinished = QtCore.Signal()
@@ -25,37 +28,6 @@ class StringField(AttrField, QtWidgets.QLineEdit):
 
     def getValue(self):
         return self.text()
-
-
-class ScriptField(AttrField, QtWidgets.QWidget):
-    def __init__(self, parent=None):
-        super(ScriptField, self).__init__(parent)
-        layout = QtWidgets.QHBoxLayout()
-        self.setLayout(layout)
-
-        self.scriptField = QtWidgets.QLineEdit()
-        self.scriptField.setEnabled(False)
-        layout.addWidget(self.scriptField)
-        self.editButton = QtWidgets.QPushButton("edit")
-        layout.addWidget(self.editButton)
-
-        self.editButton.clicked.connect(self.openScriptEditor)
-
-    def setValue(self, value):
-        setVal = attrtype.Script(value.replace('\n', r'\n'))
-        self.scriptField.setText(setVal)
-
-
-    def openScriptEditor(self):
-        currentScript = self.scriptField.text()
-        convertedScript = attrtype.Script(currentScript.replace(r'\n', '\n'))
-        self._sui = ScriptEditor(convertedScript, self)
-        self._sui.show()
-
-    def getValue(self):
-        val = self.scriptField.text()
-        return attrtype.Script(val.replace(r'\n', '\n'))
-
 
 class IntField(AttrField, QtWidgets.QLineEdit):
     def __init__(self, parent=None):
@@ -150,6 +122,59 @@ class FloatField(AttrField, QtWidgets.QLineEdit):
             pass
         return retVal
 
+
+class ListField(AttrField, QtWidgets.QLineEdit):
+    def __init__(self, parent=None):
+        super(ListField, self).__init__(parent)
+        self.editingFinished.connect(self.emitSignal)
+
+    def setValue(self, value):
+        if not value:
+            strVal = []
+        elif isinstance(value,(list, tuple)):
+            strVal = json.dumps(value)
+        else:
+            strVal = value
+
+        self.setText(strVal)
+
+    def getValue(self):
+        text = self.text()
+
+        if not text:
+            val = []
+        else:
+            val = json.loads(text)
+
+        return val
+
+
+class DictField(AttrField, QtWidgets.QLineEdit):
+    def __init__(self, parent=None):
+        super(DictField, self).__init__(parent)
+        self.editingFinished.connect(self.emitSignal)
+
+    def setValue(self, value):
+        if not value:
+            strVal = OrderedDict()
+        elif isinstance(value, (dict, OrderedDict)):
+            strVal = json.dumps(value)
+        else:
+            strVal = value
+
+        self.setText(strVal)
+
+    def getValue(self):
+        text = self.text()
+
+        if not text:
+            val = OrderedDict()
+        else:
+            val = json.loads(text, object_pairs_hook=OrderedDict)
+
+        return val
+
+
 class ChooserField(AttrField, QtWidgets.QComboBox):
     def __init__(self, parent=None):
         super(ChooserField, self).__init__(parent)
@@ -198,23 +223,76 @@ class ChooserField(AttrField, QtWidgets.QComboBox):
 
 
 
-class TemplateField(QtWidgets.QWidget):
-    # TODO : implement this later
+
+class ScriptField(AttrField, QtWidgets.QWidget):
     def __init__(self, parent=None):
-        super(TemplateField, self).__init__(parent)
-        layout = QtWidgets.QHBoxLayout()
-        self.setLayout(layout)
-        self.chooser = ChooserField()
-        layout.addWidget(self.chooser)
-        self.refreshButton = QtWidgets.QPushButton("refresh")
-        self.refreshButton.setFixedWidth(50)
-        layout.addWidget(self.refreshButton)
+        super(ScriptField, self).__init__(parent)
+        layout = HBoxLayout(self)
+        with layout:
+            self.scriptField = qcreate(QtWidgets.QLineEdit)
+            self.scriptField.setEnabled(False)
+            self.editButton = qcreate(Button, "edit")
+        self.editButton.clicked.connect(self.openScriptEditor)
+
+    def setValue(self, value):
+        setVal = attrtype.Script(value.replace('\n', r'\n'))
+        self.scriptField.setText(setVal)
+
+    def openScriptEditor(self):
+        currentScript = self.scriptField.text()
+        convertedScript = attrtype.Script(currentScript.replace(r'\n', '\n'))
+        self._sui = ScriptEditor(convertedScript, self)
+        self._sui.show()
 
     def getValue(self):
-        return self.chooser.getValue()
+        val = self.scriptField.text()
+        return attrtype.Script(val.replace(r'\n', '\n'))
 
-    def setValue(self,value):
-        self.chooser.setValue(value)
+
+class PathField(AttrField, QtWidgets.QWidget):
+    def __init__(self, parent=None):
+        super(PathField, self).__init__(parent)
+        layout = HBoxLayout(self)
+        with layout:
+            self.scriptField = qcreate(QtWidgets.QLineEdit)
+            self.scriptField.editingFinished.connect(self.emitSignal)
+            self.editButton = qcreate(Button, "browse")
+        self.editButton.clicked.connect(self.openFileDialog)
+
+    def setValue(self, value):
+        value = Path(value)
+        self.scriptField.setText(value.normcase())
+
+    def openFileDialog(self):
+        fileName = QtWidgets.QFileDialog.getOpenFileName()
+
+        if fileName:
+            self.setValue(fileName[0])
+            self.emitSignal()
+
+    def getValue(self):
+        val = self.scriptField.text()
+        return unicode(val)
+
+
+# class TemplateField(QtWidgets.QWidget):
+#     # TODO : implement this later
+#     def __init__(self, parent=None):
+#         super(TemplateField, self).__init__(parent)
+#         layout = QtWidgets.QHBoxLayout()
+#         self.setLayout(layout)
+#         self.chooser = ChooserField()
+#         layout.addWidget(self.chooser)
+#         self.refreshButton = QtWidgets.QPushButton("refresh")
+#         self.refreshButton.setFixedWidth(50)
+#         layout.addWidget(self.refreshButton)
+#
+#     def getValue(self):
+#         return self.chooser.getValue()
+#
+#     def setValue(self, value):
+#         self.chooser.setValue(value)
+
 
 class BlockInputField(AttrField, QtWidgets.QWidget):
 
@@ -256,13 +334,16 @@ class AttrFieldMaker(object):
                   (int, IntField),
                   (float, FloatField),
                   (bool, BoolField),
+                  (list, ListField),
+                  (dict, DictField),
                   (attrtype.Script, ScriptField),
+                  (attrtype.Path, PathField),
                   (attrtype.Input, BlockInputField),
     )
 
     defaultWidget = StringField
 
-    attrMap = dict(fieldPairs)
+    attrMap = OrderedDict(fieldPairs)
 
     @classmethod
     def create(cls, attrType):

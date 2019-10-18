@@ -971,12 +971,14 @@ class Block_Editor_Widget(QtWidgets.QWidget):
 
                 name = item.getName()
                 value = item.getValue()
+                type = item.attrType
 
                 if item.attrType == Input:
                     data['inputs'][name] = value
 
                 else:
                     data['attrs'][name] = value
+
         return data
 
 
