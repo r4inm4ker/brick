@@ -51,6 +51,9 @@ class BaseBlockWidget(QtWidgets.QWidget):
     def syncData(self):
         return
 
+    def currentName(self):
+        return self.blockNameField.getValue()
+
 class BlockWidget(BaseBlockWidget):
 
     def __init__(self, *args, **kwargs):

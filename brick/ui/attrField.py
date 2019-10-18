@@ -90,8 +90,8 @@ class BoolField(AttrField, QtWidgets.QLineEdit):
     def __init__(self, parent=None):
         super(BoolField, self).__init__(parent)
         self.setMaximumWidth(90)
-        self.textEdited.connect(self.emitFieldChanged)
         self.editingFinished.connect(self.convertValue)
+        self.editingFinished.connect(self.emitSignal)
 
     def setValue(self, value):
         try:
@@ -124,7 +124,6 @@ class BoolField(AttrField, QtWidgets.QLineEdit):
                 self.setText(self.False_)
         except ValueError:
             self.setText(self.False_)
-        self.emitSignal()
 
 class FloatField(AttrField, QtWidgets.QLineEdit):
     def __init__(self, parent=None):
