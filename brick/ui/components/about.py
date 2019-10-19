@@ -15,7 +15,7 @@ class About_Dialog(QtWidgets.QDialog):
             textEdit.setPlainText('''
 https://github.com/r4inm4ker/brick
 
-by Jefri Haryono, released under MIT License
+by Jefri Haryono, released under the term of MIT License
 
 icons provided by https://icons8.com
             ''')

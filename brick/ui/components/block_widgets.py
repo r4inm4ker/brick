@@ -1,6 +1,6 @@
 from collections import OrderedDict
 from qqt import QtCore, QtGui, QtWidgets
-from qqt.gui import qcreate, HBoxLayout, VBoxLayout, Button, StringField, Spacer, Checkbox, SeparatorLine
+from qqt.gui import qcreate, HBoxLayout, VBoxLayout, Button, StringField, Spacer, Checkbox, SeparatorLine, Image
 from brick.ui import IconManager
 
 class BaseBlockWidget(QtWidgets.QWidget):
@@ -91,12 +91,13 @@ class BlockWidget(BaseBlockWidget):
                 with self.frame.layout():
 
                     self.activeCheckBox = qcreate(Checkbox)
+                    icon = IconManager.get(self.block.ui_icon_name, type="path")
+
+                    self.labelIcon = qcreate(Image,icon, w=15,h=15)
+
                     self.blockTypeLabel = qcreate(QtWidgets.QLabel,"Block Type")
                     self.blockNameField = qcreate(StringField)
-                    # qcreate(Spacer)
-                    # self.annotationBtn = qcreate(Button,"?")
-                    # icon = IconManager.get("play.svg", type="icon")
-                    # self.runBlockButton = qcreate(Button, icon, "")
+
 
                     qcreate(Spacer)
 
@@ -119,9 +120,8 @@ class BlockWidget(BaseBlockWidget):
 
             qcreate(SeparatorLine)
 
-        # self.setEnableDisplay(True)
 
-
+        self.blockTypeLabel.setText("{} : ".format(self.block.__class__.__name__))
         self.blockTypeLabel.setText("{} : ".format(self.block.__class__.__name__))
         self.blockNameField.setValue(self.block.name)
         self.activeCheckBox.setValue(self.block.active)

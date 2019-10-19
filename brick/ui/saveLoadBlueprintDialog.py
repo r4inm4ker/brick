@@ -267,6 +267,7 @@ class SaveBlueprintDialog(BaseSaveLoadDialog):
         self.saveButton.clicked.connect(self.callSaveBlueprint)
         self.cancelButton.clicked.connect(self.close)
         self.blueprintTreeWidget.itemDoubleClicked.connect(self.callSaveBlueprint)
+        self.blueprintNameField.returnPressed.connect(self.callSaveBlueprint)
 
     def callSaveBlueprint(self):
         baseDir = Path(self.baseDirField.text())

@@ -915,6 +915,7 @@ class RenameAttrDialog(QtWidgets.QDialog):
             self.okBtn = qcreate(Button, "Rename")
 
         self.okBtn.clicked.connect(self.emitRenameAttr)
+        self.nameField.returnPressed.connect(self.emitRenameAttr)
 
     def emitRenameAttr(self):
         val = self.nameField.getValue()

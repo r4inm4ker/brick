@@ -1,6 +1,7 @@
 from brick.base import Generic, GenericBuilder
 from brick.constants import BuildStatus
 
+from brick import attr_type
 
 class BuildError(Exception):
     pass
@@ -9,14 +10,15 @@ class BuildError(Exception):
 class BuilderBlock(Generic):
     ui_order = 020
     ui_icon_name = "generic_block.png"
-    fixedAttrs = (('type', (str, 'GenericBuilder')),
-                  ('blueprint', (str, ''))
+    fixedAttrs = (
+        ('blueprint', (attr_type.Path, '')),
     )
+
 
     def _execute(self):
         locals().update(self.runTimeAttrs)
 
-        blueprintName = self.attrs.get('blueprint')
+        attrType, blueprintName = self.attrs.get('blueprint')
 
         builder = GenericBuilder.loadBlueprint(blueprintName)
 
