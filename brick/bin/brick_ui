@@ -1,0 +1,18 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+import sys
+from qqt import QtWidgets, QtCore
+import qdarkstyle
+from brick.ui.brick_ui import BrickWindow
+
+
+if __name__ == '__main__':
+    app = QtWidgets.QApplication([])
+
+    app.setStyleSheet(qdarkstyle.load_stylesheet_pyside())
+
+    ui = BrickWindow()
+    ui.show()
+
+    sys.exit(app.exec_())

@@ -61,6 +61,7 @@ class BrickWindow(QtWidgets.QMainWindow):
         self._initMenuBar()
         self._initToolBar()
         self._initPropertyDock()
+        self._initLogDock()
 
         icon = IconManager.get("brick.png", type="icon")
         self.setWindowIcon(icon)
@@ -91,6 +92,10 @@ class BrickWindow(QtWidgets.QMainWindow):
         self.editorWidget = self.editorDock.mainWidget
 
         self.blockListWidget.itemSelectionChanged.connect(self.updateEditorWidget)
+
+    def _initLogDock(self):
+        self.logDock = Log_Dock()
+        self.addDockWidget(QtCore.Qt.BottomDockWidgetArea, self.logDock)
 
     def updateEditorWidget(self):
         items = self.blockListWidget.selectedItems()
@@ -1005,6 +1010,26 @@ class Editor_Dock(QtWidgets.QDockWidget):
         super(Editor_Dock, self).__init__(*args, **kwargs)
         self.setAllowedAreas(QtCore.Qt.RightDockWidgetArea)
         self.mainWidget = Block_Editor_Widget()
+        self.setWidget(self.mainWidget)
+        self.setFloating(False)
+
+
+import sys, os, re
+
+
+class Log_Dock(QtWidgets.QDockWidget):
+    def __init__(self, *args, **kwargs):
+        super(Log_Dock, self).__init__(*args, **kwargs)
+        self.setAllowedAreas(QtCore.Qt.BottomDockWidgetArea)
+        self.setWindowTitle("Output Log")
+
+        if re.match("maya", os.path.basename(sys.executable), re.I):
+            from brick.hosts.maya_utils import Maya_Log_Widget
+            self.mainWidget = Maya_Log_Widget()
+        else:
+            from brick.ui.components.log_widget import Log_Widget
+            self.mainWidget = Log_Widget()
+
         self.setWidget(self.mainWidget)
         self.setFloating(False)
 
