@@ -193,8 +193,10 @@ class BaseSaveLoadDialog(QtWidgets.QDialog):
             if not eachFile.endswith(BLUEPRINT_EXTENSION):
                 continue
 
-            newItem = BlueprintTreeItem(eachFile)
-
+            try:
+                newItem = BlueprintTreeItem(eachFile)
+            except ValueError:
+                continue
             if newItem.isValid():
                 self.blueprintTreeWidget.addTopLevelItem(newItem)
                 self.blueprintTreeWidget.setItemWidget(newItem, 2, newItem.deleteButton)

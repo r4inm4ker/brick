@@ -15,7 +15,7 @@ from brick import base
 from brick import lib
 from brick import settings
 from brick.constants import BuildStatus
-from brick.attrtype import Input
+from brick.attr_type import Input
 
 from brick.ui import attrField
 from brick.ui import saveLoadBlueprintDialog as ioDialog
@@ -96,8 +96,10 @@ class BrickWindow(QtWidgets.QMainWindow):
         items = self.blockListWidget.selectedItems()
 
         if items:
-            item = items[0]
-            self.editorWidget.update(item.widget)
+            widget = items[0].widget
+            self.editorWidget.update(widget)
+        else:
+            self.editorWidget.clear()
 
     def _initMenuBar(self):
         self.menuBar = QtWidgets.QMenuBar()
@@ -228,6 +230,10 @@ class BrickWindow(QtWidgets.QMainWindow):
             self.saveBlueprintDialogCalled()
 
     def closeEvent(self, *args, **kwargs):
+
+        # disable confirmation window for faster debugging
+        ###########
+        '''
         confirm = QtWidgets.QMessageBox.question(None,
                                                  'Message',
                                                  "save current blueprint?",
@@ -238,6 +244,10 @@ class BrickWindow(QtWidgets.QMainWindow):
         elif confirm == QtWidgets.QMessageBox.Yes:
             self.saveBlueprintDialogCalled()
             super(BrickWindow, self).closeEvent(*args, **kwargs)
+        '''
+        #############
+
+        super(BrickWindow, self).closeEvent(*args, **kwargs)
 
 
 class BrickWidget(QtWidgets.QWidget):
@@ -455,8 +465,9 @@ class BlueprintWidget(QtWidgets.QWidget):
         for idx in range(self.headerWidget.attrTree.topLevelItemCount()):
             item = self.headerWidget.attrTree.topLevelItem(idx)
             name = item.getName()
+            attrType = item.attrType
             value = item.getValue()
-            self.builder.attrs[name] = value
+            self.builder.attrs[name] = (attrType, value)
 
     def buildNext(self):
         ret = self.builder.buildNext()
@@ -636,7 +647,8 @@ class BlockListWidget(QtWidgets.QListWidget):
         self.insertItem(index, item)
         self.builder.insertBlock(block, index=index)
         self.setItemWidget(item, opWidget)
-        self.setCurrentItem(item)
+        self.clearSelection()
+        item.setSelected(True)
         self.itemOrderChanged.emit()
 
     def runBlockCallback(self, blockWidget):
@@ -680,15 +692,16 @@ class HeaderWidget(QtWidgets.QWidget):
                 # self.attrTree.attrEdited.connect(self.syncData)
 
     def loadAttrs(self, builder):
-        for key, val in builder.attrs.iteritems():
+        for key, typeVal in builder.attrs.iteritems():
             if key not in self.attrTree.attrs():
-                attrType = type(val)
-                data = (key, (attrType, val))
+                attrType, attrVal = typeVal
+                # attrType = type(val)
+                data = (key, (attrType, attrVal))
                 self.attrTree.addAttr(data)
             else:
                 attrIndex = self.attrTree.attrs().index(key)
                 item = self.attrTree.topLevelItem(attrIndex)
-                item.setValue(val)
+                item.setValue(typeVal)
 
     def clear(self):
         self.attrTree.clear()
@@ -723,17 +736,23 @@ class AttrTree(QtWidgets.QTreeWidget):
     def contextMenuEvent(self, event):
         self.menu = QtWidgets.QMenu()
 
-        action = QtWidgets.QAction('add attr / input', self)
+        action = QtWidgets.QAction('add attr', self)
         action.triggered.connect(self.showAddAttrDialog)
+        icon = IconManager.get("add.svg", type="icon")
+        action.setIcon(icon)
         self.menu.addAction(action)
 
-        action = QtWidgets.QAction('rename attr / input', self)
+        action = QtWidgets.QAction('rename attr', self)
         action.triggered.connect(self.renameAttrDialog)
-        # action.setEnabled(False)
+        icon = IconManager.get("edit.svg", type="icon")
+        action.setIcon(icon)
         self.menu.addAction(action)
 
-        action = QtWidgets.QAction('remove attr / input', self)
+        action = QtWidgets.QAction('remove attr', self)
         action.triggered.connect(self.removeSelectedAttr)
+        icon = IconManager.get("trashbin.svg", type="icon")
+        action.setIcon(icon)
+
         self.menu.addAction(action)
 
         self.menu.exec_(event.globalPos())
@@ -874,7 +893,8 @@ class AddAttrDialog(QtWidgets.QDialog):
             log.warn("please fill the attribute name.")
             return
 
-        attrType = self.fieldWidget.getData()
+        attrField = self.fieldWidget.getData()
+        attrType = attrField.attrType
 
         defaultValue = None
 
@@ -913,8 +933,10 @@ class Block_Editor_Widget(QtWidgets.QWidget):
         return self.blockWidget.block
 
     def syncData(self):
+        data = self.getData()
         if self.blockWidget:
-            self.blockWidget.syncData()
+            self.block.reload(data)
+
 
     def clear(self):
         layout = self.layout()
@@ -923,16 +945,21 @@ class Block_Editor_Widget(QtWidgets.QWidget):
             widget = item.widget()
             if widget:
                 widget.setParent(None)
+                # looks like it needs this to properly delete the widget?
+                widget.deleteLater()
         self.blockWidget = None
+        mainWindow = getMainWindow(self)
+        mainWindow.editorDock.setWindowTitle("")
 
     def update(self, blockWidget, force=False):
+        mainWindow = getMainWindow(self)
+
         if blockWidget == self.blockWidget and not force:
             # already on the same block widget, doesn't need to update.
             return
 
         self.clear()
 
-        mainWindow = getMainWindow(self)
         mainWindow.editorDock.setWindowTitle(blockWidget.currentName())
 
         self.blockWidget = blockWidget
@@ -948,36 +975,26 @@ class Block_Editor_Widget(QtWidgets.QWidget):
             aname, (atype, aval) = fixedAttr
             self.attrTree.addAttr(fixedAttr)
             if aname in block.attrs:
-                val = block.attrs.get(aname)
-                self.attrTree.setAttr(aname, val)
+                typeVal = block.attrs.get(aname)
+                self.attrTree.setAttr(aname, typeVal[1])
 
-        for key, val in block.attrs.items():
+        for key, typeVal in block.attrs.items():
             if key not in self.attrTree.attrs():
-                attrType = type(val)
-                data = (key, (attrType, val))
+                data = (key, typeVal)
                 self.attrTree.addAttr(data)
-
-        for key, val in block.inputs.items():
-            data = (key, (Input, val))
-            self.attrTree.addAttr(data)
 
     def getData(self):
         data = {}
         data['attrs'] = OrderedDict()
-        data['inputs'] = OrderedDict()
         if self.attrTree:
             for idx in range(self.attrTree.topLevelItemCount()):
                 item = self.attrTree.topLevelItem(idx)
 
                 name = item.getName()
                 value = item.getValue()
-                type = item.attrType
+                attrType = item.attrType
 
-                if item.attrType == Input:
-                    data['inputs'][name] = value
-
-                else:
-                    data['attrs'][name] = value
+                data['attrs'][name] = (attrType, value)
 
         return data
 

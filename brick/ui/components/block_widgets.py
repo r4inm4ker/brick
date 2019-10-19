@@ -144,15 +144,7 @@ class BlockWidget(BaseBlockWidget):
 
     def syncData(self):
         data = OrderedDict()
-        data['type'] = self.block.__class__.__name__
         data['name'] = self.blockNameField.text()
-        data['notes'] = ""
-
-        editorData = self.editorWidget.getData()
-
-        for dataName, dataValue in editorData.items():
-            data[dataName] = dataValue
-
         data['active'] = self.activeCheckBox.isChecked()
 
         self.block.reload(data)
@@ -214,7 +206,5 @@ class BreakPointWidget(BaseBlockWidget):
 
     def syncData(self):
         data = OrderedDict()
-        data['type'] = self.block.__class__.__name__
-        # data['name'] = self.block.name
         data['active'] = self.activeCheckBox.isChecked()
         self.block.reload(data)

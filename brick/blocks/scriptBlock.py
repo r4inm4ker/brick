@@ -1,11 +1,11 @@
-from brick.attrtype import Script
+from brick import attr_type
 from brick.base import Generic, Custom
 
 
 class ScriptBlock(Generic):
     ui_order = 010
     ui_icon_name = "python_script.svg"
-    fixedAttrs = (('script', (Script, '')),)
+    fixedAttrs = (('script', (attr_type.Script, '')),)
 
     def _execute(self):
         locals().update(self.runTimeAttrs)
@@ -35,7 +35,7 @@ class ScriptBlock(Generic):
 class TestScriptBlock(Custom):
     ui_order=510
     ui_icon_name = "python_script.svg"
-    fixedAttrs = (('script', (Script, '')),)
+    fixedAttrs = (('script', (attr_type.Script, '')),)
 
     def _execute(self):
         locals().update(self.runTimeAttrs)

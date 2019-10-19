@@ -2,7 +2,7 @@ from qqt import QtGui, QtCore, QtWidgets
 from qqt.gui import qcreate, VBoxLayout, HBoxLayout, Button
 from brick.ui.lib.python_syntax import PythonHighlighter
 from brick.ui import IconManager
-from brick import attrtype
+from brick import attr_type
 
 
 class ScriptEditor(QtWidgets.QDialog):
@@ -81,7 +81,7 @@ class PythonTextEditor(QtWidgets.QPlainTextEdit):
 
     def getCurrentText(self):
         currentScript = self.toPlainText()
-        convertedScript = attrtype.Script(currentScript.replace('\n', r'\n'))
+        convertedScript = attr_type.Script(currentScript.replace('\n', r'\n'))
         convertedScript = convertedScript.replace('\t', '    ')
         return convertedScript
 

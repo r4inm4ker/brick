@@ -1,9 +1,10 @@
 import json
 from qqt import QtCore, QtWidgets, QtGui
 from qqt.gui import qcreate, HBoxLayout, VBoxLayout, Button
-from brick import attrtype
+from brick import attr_type
 from brick.ui import IconManager
 from brick.ui.components.script_editor import ScriptEditor
+from brick.lib import classproperty
 from brick.lib.path import Path
 from collections import OrderedDict
 
@@ -19,6 +20,8 @@ class AttrField(object):
 
 
 class StringField(AttrField, QtWidgets.QLineEdit):
+    attrType = attr_type.String
+
     def __init__(self, parent=None):
         super(StringField, self).__init__(parent)
         self.editingFinished.connect(self.emitSignal)
@@ -30,6 +33,8 @@ class StringField(AttrField, QtWidgets.QLineEdit):
         return self.text()
 
 class IntField(AttrField, QtWidgets.QLineEdit):
+    attrType = attr_type.Int
+
     def __init__(self, parent=None):
         super(IntField, self).__init__(parent)
         self.setMaximumWidth(90)
@@ -56,6 +61,8 @@ class IntField(AttrField, QtWidgets.QLineEdit):
 
 
 class BoolField(AttrField, QtWidgets.QLineEdit):
+    attrType = attr_type.Bool
+
     True_ = str(True)
     False_ = str(False)
 
@@ -98,6 +105,8 @@ class BoolField(AttrField, QtWidgets.QLineEdit):
             self.setText(self.False_)
 
 class FloatField(AttrField, QtWidgets.QLineEdit):
+    attrType = attr_type.Float
+
     def __init__(self, parent=None):
         super(FloatField, self).__init__(parent)
         self.setMaximumWidth(90)
@@ -124,6 +133,8 @@ class FloatField(AttrField, QtWidgets.QLineEdit):
 
 
 class ListField(AttrField, QtWidgets.QLineEdit):
+    attrType = attr_type.List
+
     def __init__(self, parent=None):
         super(ListField, self).__init__(parent)
         self.editingFinished.connect(self.emitSignal)
@@ -150,13 +161,15 @@ class ListField(AttrField, QtWidgets.QLineEdit):
 
 
 class DictField(AttrField, QtWidgets.QLineEdit):
+    attrType = attr_type.Dict
+
     def __init__(self, parent=None):
         super(DictField, self).__init__(parent)
         self.editingFinished.connect(self.emitSignal)
 
     def setValue(self, value):
         if not value:
-            strVal = OrderedDict()
+            strVal = ""
         elif isinstance(value, (dict, OrderedDict)):
             strVal = json.dumps(value)
         else:
@@ -176,6 +189,8 @@ class DictField(AttrField, QtWidgets.QLineEdit):
 
 
 class ChooserField(AttrField, QtWidgets.QComboBox):
+    attrType = attr_type.Chooser
+
     def __init__(self, parent=None):
         super(ChooserField, self).__init__(parent)
         self._setupUI()
@@ -225,6 +240,8 @@ class ChooserField(AttrField, QtWidgets.QComboBox):
 
 
 class ScriptField(AttrField, QtWidgets.QWidget):
+    attrType = attr_type.Script
+
     def __init__(self, parent=None):
         super(ScriptField, self).__init__(parent)
         layout = HBoxLayout(self)
@@ -235,21 +252,23 @@ class ScriptField(AttrField, QtWidgets.QWidget):
         self.editButton.clicked.connect(self.openScriptEditor)
 
     def setValue(self, value):
-        setVal = attrtype.Script(value.replace('\n', r'\n'))
+        setVal = attr_type.Script(value.replace('\n', r'\n'))
         self.scriptField.setText(setVal)
 
     def openScriptEditor(self):
         currentScript = self.scriptField.text()
-        convertedScript = attrtype.Script(currentScript.replace(r'\n', '\n'))
+        convertedScript = attr_type.Script(currentScript.replace(r'\n', '\n'))
         self._sui = ScriptEditor(convertedScript, self)
         self._sui.show()
 
     def getValue(self):
         val = self.scriptField.text()
-        return attrtype.Script(val.replace(r'\n', '\n'))
+        return attr_type.Script(val.replace(r'\n', '\n'))
 
 
 class PathField(AttrField, QtWidgets.QWidget):
+    attrType = attr_type.Path
+
     def __init__(self, parent=None):
         super(PathField, self).__init__(parent)
         layout = HBoxLayout(self)
@@ -295,6 +314,7 @@ class PathField(AttrField, QtWidgets.QWidget):
 
 
 class BlockInputField(AttrField, QtWidgets.QWidget):
+    attrType = attr_type.Input
 
     def __init__(self, parent=None):
         super(BlockInputField, self).__init__(parent)
@@ -324,28 +344,38 @@ class BlockInputField(AttrField, QtWidgets.QWidget):
 
 
 class AttrTypeChooser(ChooserField):
+    attrType = attr_type.TypeChosser
+
     @property
     def items(self):
-        return [(repr(atype), atype) for atype, field in AttrFieldMaker.fieldPairs]
+        return AttrFieldMaker.fields
+
+    def reloadItems(self):
+        while self.count() > 0:
+            for idx in range(self.count()):
+                self.removeItem(idx)
+
+        for field in self.items:
+            self.addItem(str(field.attrType.__name__), userData=field)
 
 
 class AttrFieldMaker(object):
-    fieldPairs = ((str, StringField),
-                  (int, IntField),
-                  (float, FloatField),
-                  (bool, BoolField),
-                  (list, ListField),
-                  (dict, DictField),
-                  (attrtype.Script, ScriptField),
-                  (attrtype.Path, PathField),
-                  (attrtype.Input, BlockInputField),
-    )
+    fields = (StringField, IntField, FloatField, BoolField, ListField, DictField, ScriptField, PathField, BlockInputField)
 
     defaultWidget = StringField
 
-    attrMap = OrderedDict(fieldPairs)
+    @classproperty
+    def attrMap(cls):
+        amap = OrderedDict()
+        for each in cls.fields:
+            amap[each.attrType] = each
+        return amap
 
     @classmethod
     def create(cls, attrType):
-        attrFieldClass = cls.attrMap.get(attrType, cls.defaultWidget)
+
+        attrFieldClass = cls.attrMap.get(attrType)
+
+        if not attrFieldClass:
+            raise ValueError("attrFieldClass not found.")
         return attrFieldClass()

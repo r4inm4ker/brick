@@ -2,7 +2,7 @@ import json
 from collections import OrderedDict
 from lib.path import Path
 from .constants import BuildStatus, BLUEPRINT_EXTENSION
-from . import attrtype
+from . import attr_type
 from brick import lib
 import traceback
 import time
@@ -17,6 +17,8 @@ log = logging.getLogger("brick")
 class Builder(object):
     def __init__(self):
         self.blocks = []
+        self.notes = ""
+        self._name = ""
         self.attrs = OrderedDict()
         self.resultAttrs = {}
         # TODO: inspect whether self.resultAttrMap and self.results are required for now.
@@ -26,11 +28,13 @@ class Builder(object):
 
     @property
     def name(self):
-        return self.attrs.get('name', '{0}_{1}'.format(self.__class__.__name__, str(uuid.uuid4())))
+        if not self._name:
+            self._name =  '{0}_{1}'.format(self.__class__.__name__, str(uuid.uuid4()))
+        return self._name
 
     @name.setter
     def name(self, name):
-        self.attrs['name'] = name
+        self._name = name
 
     def insertBlock(self, block, index=-1):
         if index < 0:
@@ -65,19 +69,23 @@ class Builder(object):
 
         writeData['notes'] = notes
         writeData['type'] = self.__class__.__name__
-        writeData['attrs'] = self.attrs
+
+        # serialize attrs
+        srAttrs = OrderedDict()
+        for attrName, val in self.attrs.items():
+            attrType, attrVal = str(val[0].__name__), val[1]
+            srAttrs[attrName] = (attrType, attrVal)
+
+
+        writeData['attrs'] = srAttrs
 
         blocks = []
 
-        for op in self.blocks:
-            blocks.append(op.dump())
+        for block in self.blocks:
+            blocks.append(block.dump())
 
         writeData['blocks'] = blocks
 
-        res = {}
-        for resultAttr, (input, attr) in self.resultAttrs.iteritems():
-            res[resultAttr] = (input.name, attr)
-        writeData['results'] = res
 
         with open(bluePrint, 'w') as fd:
             json.dump(writeData, fd, indent=4)
@@ -103,11 +111,11 @@ class Builder(object):
 
         return cls.load(blueprint)
 
-    def setAttr(self, key, val):
-        self.attrs[key] = val
+    def setAttr(self, key, typeVal):
+        self.attrs[key] = typeVal
 
-    def connectResult(self, key, node, attr):
-        self.resultAttrs[key] = (node.name, attr)
+    def connectInputs(self, key, node, attr):
+        self.inputAttrs[key] = (node.name, attr)
         self.resultAttrMap[node.name] = key
 
     @classmethod
@@ -116,7 +124,23 @@ class Builder(object):
 
         builder = builderCls()
 
-        builder.attrs = data.get('attrs')
+        rawAttrs = data.get('attrs')
+
+        convertedAttrs = OrderedDict()
+
+        for attrName, typeVal in rawAttrs.items():
+            # for old format compatibility with no attrType stored
+            # can be removed in the future when all the blueprints have been updated to have attrType
+            if not isinstance(typeVal, (list,tuple)):
+                attrType = attr_type.guessNameFromValue(typeVal)
+                typeVal = (attrType, typeVal)
+            #############################################################################
+
+            attrType = attr_type.getTypeFromName(typeVal[0])
+
+            convertedAttrs[attrName] = (attrType, typeVal[1])
+
+        builder.attrs = convertedAttrs
 
         for blockData in data.get('blocks'):
             block = Block.load(blockData)
@@ -182,16 +206,14 @@ class Builder(object):
 
         if block in self.resultAttrMap:
             key = self.resultAttrMap[block]
-            try:
-                node, attr = self.resultAttrs[key]
-                self.results[key] = getattr(node, attr)
-            except AttributeError:
-                log.warn('invalid result attribute: {0}.{1}'.format(node, attr))
+            node, attr = self.resultAttrs[key]
+            self.results[key] = getattr(node, attr)
+
+
 
 
 class GenericBuilder(Builder):
     pass
-    # fixedAttrs = (('variant', (attrtype.Variant, None)),)
     fixedAttrs = ()
 
 
@@ -203,18 +225,17 @@ class Block(object):
         self.runTimeAttrs = {}
         self._results = None
         self._name = None
-        self.inputs = {}
         self.log = ''
         self.active = True
         self.parent = None
         self.buildStatus = BuildStatus.nothing
 
 
-    def setAttr(self, key, val):
-        self.attrs[key] = val
+    def setAttr(self, key, typeVal):
+        self.attrs[key] = typeVal
 
-    def setRunTimeAttr(self, key, val):
-        self.runTimeAttrs[key] = val
+    def setRunTimeAttr(self, key, typeVal):
+        self.runTimeAttrs[key] = typeVal[1]
 
     def execute(self):
         try:
@@ -247,21 +268,32 @@ class Block(object):
     def results(self, results):
         self._results = results
 
-    def setInput(self, key, node, attr):
-        self.inputs.update({key: (node.name, attr)})
-
     def ingestInputs(self):
-        for key, (nodeName, attr) in self.inputs.iteritems():
-            try:
-                node = next(bl for bl in self.parent.blocks if bl.name == nodeName)
-            except StopIteration:
-                continue
+        for attrName, typeVal in self.attrs.items():
+            attrType, attrVal = typeVal
 
-            self.runTimeAttrs[key] = getattr(node, attr)
+            if attrType == attr_type.Input:
+                nodeName, attr = attrVal
+
+                try:
+                    node = next(bl for bl in self.parent.blocks if bl.name == nodeName)
+                except StopIteration:
+                    raise ValueError("cannot find input block name: {}".format(nodeName))
+
+                try:
+                    self.runTimeAttrs[attrName] = getattr(node, attr)
+                except AttributeError:
+                    raise ValueError("cannot find attribute {} from input block {}".format(attr, node.name))
 
     def ingestAttrs(self):
-        for key, val in self.attrs.iteritems():
-            self.runTimeAttrs[key] = val
+        for key, typeVal in self.attrs.iteritems():
+            attrType, attrVal = typeVal
+
+            if attrType == attr_type.Input:
+                # Input type attrs are ingested in separated method.
+                continue
+
+            self.runTimeAttrs[key] = typeVal[1]
 
     def setNotes(self, notes):
         self.notes = notes
@@ -272,13 +304,15 @@ class Block(object):
         data['name'] = self.name
         data['notes'] = self.notes
 
-        inputDict = OrderedDict()
-        for key, (nodeName, attr) in self.inputs.iteritems():
-            inputDict[key] = attrtype.Input((nodeName, attr))
-
         data['active'] = self.active
-        data['inputs'] = inputDict
-        data['attrs'] = self.attrs
+
+        # serialize attrs
+        srAttrs = OrderedDict()
+        for attrName, val in self.attrs.items():
+            attrType, attrVal = str(val[0].__name__), val[1]
+            srAttrs[attrName] =(attrType, attrVal)
+
+        data['attrs'] = srAttrs
 
         return data
 
@@ -289,8 +323,21 @@ class Block(object):
         block = blockClass()
         block.name = data.get('name')
         block.notes = data.get('notes')
-        block.attrs = data.get('attrs')
-        block.inputs = data.get('inputs')
+
+        convertedAttrs = OrderedDict()
+
+        for attrName, typeVal in data.get('attrs').items():
+            # for old format compatibility with no attrType stored
+            # can be removed in the future when all the blueprints have been updated to have attrType
+            if not isinstance(typeVal, (list, tuple)):
+                attrType = attr_type.guessNameFromValue(typeVal)
+                typeVal = (attrType, typeVal)
+            ########################################################################################
+
+            attrType = attr_type.getTypeFromName(typeVal[0])
+            convertedAttrs[attrName] = (attrType, typeVal[1])
+
+        block.attrs = convertedAttrs
         block.active = data.get('active')
         return block
 
@@ -306,9 +353,9 @@ class Block(object):
         return all([hasattr(cls, '_execute'), hasattr(cls, 'category')])
 
     def reload(self, data):
-        for attrName, value in data.items():
+        for attrName, typeVal in data.items():
             if hasattr(self, attrName):
-                setattr(self, attrName, value)
+                setattr(self, attrName, typeVal)
 
 
     def reset(self):
