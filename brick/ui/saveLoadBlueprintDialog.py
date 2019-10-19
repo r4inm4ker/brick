@@ -2,10 +2,7 @@ import os
 from qqt import QtWidgets, QtGui, QtCore
 from Qt.QtCompat import loadUi
 from brick.lib.path import Path
-
-import logging
-
-log = logging.getLogger("brick")
+from brick.base import log
 
 from brick.constants import BLUEPRINT_EXTENSION
 from brick import lib

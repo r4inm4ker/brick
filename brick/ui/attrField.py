@@ -9,6 +9,7 @@ from brick.lib import classproperty
 from brick.lib.path import Path
 from collections import OrderedDict
 
+
 class AttrField(object):
     editFinished = QtCore.Signal()
 
@@ -32,6 +33,7 @@ class StringField(AttrField, QtWidgets.QLineEdit):
 
     def getValue(self):
         return self.text()
+
 
 class IntField(AttrField, QtWidgets.QLineEdit):
     attrType = attr_type.Int
@@ -104,6 +106,7 @@ class BoolField(AttrField, QtWidgets.QLineEdit):
                 self.setText(self.False_)
         except ValueError:
             self.setText(self.False_)
+
 
 class FloatField(AttrField, QtWidgets.QLineEdit):
     attrType = attr_type.Float
@@ -238,14 +241,13 @@ class ChooserField(AttrField, QtWidgets.QComboBox):
         return None
 
 
-
-
 class ScriptField(AttrField, QtWidgets.QWidget):
     attrType = attr_type.Script
 
     def __init__(self, parent=None):
         super(ScriptField, self).__init__(parent)
         layout = HBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
         with layout:
             self.scriptField = qcreate(QtWidgets.QLineEdit)
             self.scriptField.setEnabled(False)
@@ -293,25 +295,6 @@ class PathField(AttrField, QtWidgets.QWidget):
     def getValue(self):
         val = self.scriptField.text()
         return unicode(val)
-
-
-# class TemplateField(QtWidgets.QWidget):
-#     # TODO : implement this later
-#     def __init__(self, parent=None):
-#         super(TemplateField, self).__init__(parent)
-#         layout = QtWidgets.QHBoxLayout()
-#         self.setLayout(layout)
-#         self.chooser = ChooserField()
-#         layout.addWidget(self.chooser)
-#         self.refreshButton = QtWidgets.QPushButton("refresh")
-#         self.refreshButton.setFixedWidth(50)
-#         layout.addWidget(self.refreshButton)
-#
-#     def getValue(self):
-#         return self.chooser.getValue()
-#
-#     def setValue(self, value):
-#         self.chooser.setValue(value)
 
 
 class BlockInputField(AttrField, QtWidgets.QWidget):

@@ -7,29 +7,18 @@ from functools import partial
 from qqt import QtCore, QtGui, QtWidgets, QtCompat
 from qqt.gui import qcreate, VBoxLayout, HBoxLayout, Button, ContextMenu, Splitter, Spacer, StringField
 
-loadUi = QtCompat.loadUi
-
-import logging
-
-log = logging.getLogger("brick")
-
 from brick import base
+from brick.base import log
+
 from brick import lib
 from brick import settings
 from brick.constants import BuildStatus
-from brick.attr_type import Input
 
 from brick.ui import attrField
 from brick.ui import saveLoadBlueprintDialog as ioDialog
 from brick.ui.components import block_widgets
 
 from brick.ui import IconManager
-
-UIDIR = os.path.dirname(__file__)
-
-
-class Main_UI(object):
-    ui = None
 
 
 def getMainWindow(widget):
@@ -69,6 +58,8 @@ class BrickWindow(QtWidgets.QMainWindow):
         self.setWindowIcon(icon)
 
         self.updateTitle()
+
+        self.resize(1300,1080)
 
     @classmethod
     def launch(cls):
@@ -335,17 +326,19 @@ class BlueprintWidget(QtWidgets.QWidget):
     def _initUI(self):
         self.setContentsMargins(0, 0, 0, 0)
         layout = VBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
         with layout:
             splitter = qcreate(Splitter, mode="vertical")
             with splitter:
                 self.headerWidget = qcreate(HeaderWidget)
                 # self.blockMenu = qcreate(BlockMenuWidget,self)
 
-                w2 = qcreate(QtWidgets.QWidget, layoutType=VBoxLayout)
+                w2 = qcreate(QtWidgets.QGroupBox, layoutType=VBoxLayout)
+                w2.setTitle("Blueprint")
+                w2.setStyleSheet('''QGroupBox{ font-size: 14px; font-weight: bold;}''')
+                w2.setAlignment(QtCore.Qt.AlignCenter)
+                w2.layout().setContentsMargins(0, 0, 0, 0)
                 with w2.layout():
-                    label = qcreate(QtWidgets.QLabel, "Blueprint: ")
-                    label.setAlignment(QtCore.Qt.AlignHCenter)
-
                     self.blockListWidget = qcreate(BlockListWidget, blueprintWidget=self)
                     with qcreate(HBoxLayout):
                         icon = IconManager.get("rewind.png", type="icon")
@@ -369,6 +362,9 @@ class BlueprintWidget(QtWidgets.QWidget):
                         icon = IconManager.get("fast_forward.png", type="icon")
                         self.fastForwardButton = qcreate(Button, icon, "")
                         self.fastForwardButton.setMinimumHeight(25)
+            splitter.setSizes((50,600))
+
+
 
     def _connectSignals(self):
         self.rewindButton.clicked.connect(self.rewind)
@@ -679,19 +675,19 @@ class BlockItem(QtWidgets.QListWidgetItem):
     pass
 
 
-class HeaderWidget(QtWidgets.QWidget):
-    _uifile = os.path.join(UIDIR, "headerWidget.ui")
-
+class HeaderWidget(QtWidgets.QGroupBox):
     def __init__(self, parent=None):
         super(HeaderWidget, self).__init__(parent=parent)
-        self.setFixedHeight(100)
+        # self.setFixedHeight(120)
         self.setContentsMargins(0, 0, 0, 0)
-
-        loadUi(self._uifile, self)
-
-        self.attrTree = AttrTree(self)
-        self.attrTree.attrEdited.connect(self.syncData)
-        self.attrTreeLayout.addWidget(self.attrTree)
+        self.setTitle("Global Attributes")
+        self.setAlignment(QtCore.Qt.AlignCenter)
+        self.setStyleSheet('''QGroupBox{ font-size: 12px; font-weight: bold;}''')
+        layout = VBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        with layout:
+            self.attrTree = qcreate(AttrTree)
+            self.attrTree.attrEdited.connect(self.syncData)
 
     def syncData(self):
         mainWindow = getMainWindow(self)
@@ -718,11 +714,11 @@ class HeaderWidget(QtWidgets.QWidget):
     def clear(self):
         self.attrTree.clear()
 
-    def sizeUp(self):
-        numItem = self.attrTree.topLevelItemCount()
-        baseHeight = 90
-        itemHeight = 30
-        self.setFixedHeight(baseHeight + numItem * itemHeight)
+    # def sizeUp(self):
+    #     numItem = self.attrTree.topLevelItemCount()
+    #     baseHeight = 90
+    #     itemHeight = 30
+    #     self.setFixedHeight(baseHeight + numItem * itemHeight)
 
     def reset(self):
         self.clear()
@@ -744,6 +740,7 @@ class AttrTree(QtWidgets.QTreeWidget):
         self.setColumnCount(len(self._headers))
         self.setHeaderLabels(self._headers)
         self.setStyleSheet(self.stylesheet)
+        self.setAlternatingRowColors(True)
 
     def contextMenuEvent(self, event):
         self.menu = QtWidgets.QMenu()
@@ -840,6 +837,9 @@ class AttrTree(QtWidgets.QTreeWidget):
 class AttrItem(QtWidgets.QTreeWidgetItem):
     def __init__(self, itemData, parentWidget=None):
         super(AttrItem, self).__init__()
+
+        self.setSizeHint(1, QtCore.QSize(100,30))
+
         self.parentWidget = parentWidget
         attrName, (attrType, defaultValue) = itemData
 
