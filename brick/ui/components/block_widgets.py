@@ -25,6 +25,9 @@ class BaseBlockWidget(QtWidgets.QWidget):
         self.deleteButton.clicked.connect(self.delete)
         self.activeCheckBox.clicked.connect(self.switchActiveState)
         self.blockNameField.editingFinished.connect(self.blockNameFieldEdited)
+        self.blockNameField.returnPressed.connect(self.blockNameFieldEdited)
+
+
 
     def delete(self):
         self.itemDeleted.emit(self.block)
@@ -41,6 +44,7 @@ class BaseBlockWidget(QtWidgets.QWidget):
         self.activeStateEdited.emit(currState)
 
     def blockNameFieldEdited(self):
+        self.blockNameField.clearFocus()
         val = self.blockNameField.getValue()
         self.syncData()
         self.nameEdited.emit(val)
@@ -199,7 +203,7 @@ class BreakPointWidget(BaseBlockWidget):
 
     def setEnableDisplay(self, enabled):
         if enabled:
-            self.setStyleSheet('background-color:rgb(127, 35, 35)')
+            self.setStyleSheet('background-color:rgb(129, 65, 0)')
         else:
             self.setStyleSheet("""QWidget {background-color:gray;}""")
 

@@ -1,4 +1,5 @@
 import json
+import ast
 from qqt import QtCore, QtWidgets, QtGui
 from qqt.gui import qcreate, HBoxLayout, VBoxLayout, Button
 from brick import attr_type
@@ -141,7 +142,7 @@ class ListField(AttrField, QtWidgets.QLineEdit):
 
     def setValue(self, value):
         if not value:
-            strVal = []
+            strVal = ""
         elif isinstance(value,(list, tuple)):
             strVal = json.dumps(value)
         else:
@@ -155,7 +156,7 @@ class ListField(AttrField, QtWidgets.QLineEdit):
         if not text:
             val = []
         else:
-            val = json.loads(text)
+            val = ast.literal_eval(text)
 
         return val
 
@@ -183,7 +184,7 @@ class DictField(AttrField, QtWidgets.QLineEdit):
         if not text:
             val = OrderedDict()
         else:
-            val = json.loads(text, object_pairs_hook=OrderedDict)
+            val = ast.literal_eval(text)
 
         return val
 

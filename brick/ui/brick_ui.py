@@ -1,3 +1,5 @@
+import sys
+import re
 import json
 import os
 from collections import OrderedDict
@@ -649,6 +651,10 @@ class BlockListWidget(QtWidgets.QListWidget):
         opWidget.itemDeleted.connect(self.deleteBlock)
         item.widget, opWidget.item = opWidget, item
 
+
+        mainWindow = getMainWindow(self)
+        opWidget.nameEdited.connect(mainWindow.editorDock.setWindowTitle)
+
         self.insertItem(index, item)
         self.builder.insertBlock(block, index=index)
         self.setItemWidget(item, opWidget)
@@ -666,6 +672,7 @@ class BlockListWidget(QtWidgets.QListWidget):
         self.builder.blocks.remove(block)
         self.blueprintWidget.syncBuilder()
         log.debug("deleted: {0}".format(self.builder.blocks))
+
 
 
 class BlockItem(QtWidgets.QListWidgetItem):
@@ -1014,7 +1021,6 @@ class Editor_Dock(QtWidgets.QDockWidget):
         self.setFloating(False)
 
 
-import sys, os, re
 
 
 class Log_Dock(QtWidgets.QDockWidget):
