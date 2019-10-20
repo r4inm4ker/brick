@@ -9,6 +9,6 @@ class BuildStatus(object):
     end = 4
 
 
-BLUEPRINT_EXTENSION = '.json'
+BLUEPRINT_EXTENSION = '.bpt'
 
 ICON_DIR = os.path.join(os.path.dirname(__file__), "icons")
