@@ -30,7 +30,7 @@ class ScriptEditor(QtWidgets.QDialog):
 
         layout.setRatio(1, 0)
 
-        self.resize(400,400)
+        self.resize(800,800)
 
 
     def initSignal(self):

@@ -96,6 +96,6 @@ def addRecentBlueprint(filePath):
     data[Settings.Recent_Files].insert(0,str(filePath.normcase()))
 
     if len(data[Settings.Recent_Files]) > Settings.Max_Files_Length:
-        data[Settings.Recent_Files] = data[Settings.Recent_Files][1:]
+        data[Settings.Recent_Files] = data[Settings.Recent_Files][0:-1]
 
     writeHistoryFile(data)
