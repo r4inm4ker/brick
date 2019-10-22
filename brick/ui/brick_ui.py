@@ -197,7 +197,8 @@ class BrickWindow(QtWidgets.QMainWindow):
         self.currentBlueprint = filePath
         self.updateTitle()
 
-    def saveBluePrint(self, filePath, notes):
+    def saveBluePrint(self, data):
+        filePath, notes = data
         self.blueprintWidget.builder.saveBlueprint(filePath, notes)
         self.currentBlueprint = filePath
         log.info("Blueprint saved : {}".format(filePath))
@@ -241,9 +242,15 @@ class BrickWindow(QtWidgets.QMainWindow):
                                                  QtWidgets.QMessageBox.No)
 
         if confirm == QtWidgets.QMessageBox.No:
-            self.blueprintWidget.initDefault()
+            self.clear()
         elif confirm == QtWidgets.QMessageBox.Save:
             self.saveBlueprintDialogCalled()
+            self.clear()
+
+
+    def clear(self):
+        self.editorWidget.clear()
+        self.blueprintWidget.initDefault()
 
     def closeEvent(self, *args, **kwargs):
 
@@ -518,7 +525,7 @@ class BlueprintWidget(QtWidgets.QWidget):
         self.builder = builder
 
     def clear(self):
-        self.headerWidget.reset()
+        self.headerWidget.clear()
         self.blockListWidget.clear()
         self.builder = None
 
@@ -741,15 +748,15 @@ class HeaderWidget(QtWidgets.QGroupBox):
     def clear(self):
         self.attrTree.clear()
 
-    # def sizeUp(self):
-    #     numItem = self.attrTree.topLevelItemCount()
-    #     baseHeight = 90
-    #     itemHeight = 30
-    #     self.setFixedHeight(baseHeight + numItem * itemHeight)
-
-    def reset(self):
-        self.clear()
-        self.initAttrs(base.GenericBuilder)
+    # # def sizeUp(self):
+    # #     numItem = self.attrTree.topLevelItemCount()
+    # #     baseHeight = 90
+    # #     itemHeight = 30
+    # #     self.setFixedHeight(baseHeight + numItem * itemHeight)
+    #
+    # def reset(self):
+    #     self.clear()
+    #     self.initAttrs(base.GenericBuilder)
 
 
 class AttrTree(QtWidgets.QTreeWidget):
