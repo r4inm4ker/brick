@@ -1,7 +1,7 @@
 from brick.base import Custom
 
 class MayaSceneImporter(Custom):
-    ui_order = 030
+    ui_order = 30
     ui_icon_name = "import.png"
     fixedAttrs = (('sceneFile', (str, '')),)
 

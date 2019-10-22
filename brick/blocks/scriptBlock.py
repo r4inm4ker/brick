@@ -3,7 +3,7 @@ from brick.base import Generic, Custom
 
 
 class ScriptBlock(Generic):
-    ui_order = 010
+    ui_order = 11
     ui_icon_name = "python_script.svg"
     fixedAttrs = (('script', (attr_type.Script, '')),)
 
@@ -11,7 +11,7 @@ class ScriptBlock(Generic):
         locals().update(self.runTimeAttrs)
 
         oldLocals = {}
-        for key, val in locals().iteritems():
+        for key, val in locals().items():
             oldLocals[key] = val
 
         func = self.runTimeAttrs.get('script')
@@ -19,15 +19,15 @@ class ScriptBlock(Generic):
         if not func:
             return
 
-        exec func
+        exec(func)
 
         addedLocals = {}
 
-        for key, val in locals().iteritems():
+        for key, val in locals().items():
             if key not in oldLocals:
                 addedLocals[key] = val
 
-        for key, val in addedLocals.iteritems():
+        for key, val in addedLocals.items():
             setattr(self, key, val)
 
 
@@ -41,7 +41,7 @@ class TestScriptBlock(Custom):
         locals().update(self.runTimeAttrs)
 
         oldLocals = {}
-        for key, val in locals().iteritems():
+        for key, val in locals().items():
             oldLocals[key] = val
 
         func = self.runTimeAttrs.get('script')
@@ -51,15 +51,15 @@ class TestScriptBlock(Custom):
         if not func:
             return
 
-        exec func
+        exec(func)
 
         addedLocals = {}
 
-        for key, val in locals().iteritems():
+        for key, val in locals().items():
             if key not in oldLocals:
                 addedLocals[key] = val
 
-        for key, val in addedLocals.iteritems():
+        for key, val in addedLocals.items():
             setattr(self, key, val)
 
     # @classproperty

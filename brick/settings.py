@@ -1,10 +1,9 @@
 from os.path import expanduser
-from lib.path import Path
+from brick.lib.path import Path
 from collections import OrderedDict
 import json
 
 from brick.base import log
-
 
 class Settings(object):
     Last_Opened_Dir = 'last_opened_directory'

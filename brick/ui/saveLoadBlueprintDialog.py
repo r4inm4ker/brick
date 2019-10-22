@@ -2,7 +2,7 @@ import os
 from qqt import QtWidgets, QtGui, QtCore
 from Qt.QtCompat import loadUi
 from brick.lib.path import Path
-from brick.base import log
+from brick.base import log, unicode
 
 from brick.constants import BLUEPRINT_EXTENSION
 from brick import lib
@@ -12,6 +12,7 @@ UIDIR = os.path.dirname(__file__)
 import brick.settings as settings
 
 from brick.ui import IconManager
+
 
 
 class DeleteButton(QtWidgets.QPushButton):

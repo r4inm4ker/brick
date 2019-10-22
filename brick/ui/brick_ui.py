@@ -179,7 +179,7 @@ class BrickWindow(QtWidgets.QMainWindow):
         self.currentBlueprint = filePath
         self.updateTitle()
 
-    def saveBluePrint(self, (filePath, notes)):
+    def saveBluePrint(self, filePath, notes):
         self.blueprintWidget.builder.saveBlueprint(filePath, notes)
         self.currentBlueprint = filePath
         log.info("Blueprint saved : {}".format(filePath))
@@ -610,7 +610,7 @@ class BlockListWidget(QtWidgets.QListWidget):
             super(BlockListWidget, self).dropEvent(event)
             idx = 0
             insertIndex = -1
-            while idx < range(self.count()):
+            while idx < self.count():
                 item = self.item(idx)
                 if not hasattr(item, "widget"):
                     insertIndex = idx
@@ -700,7 +700,7 @@ class HeaderWidget(QtWidgets.QGroupBox):
                 # self.attrTree.attrEdited.connect(self.syncData)
 
     def loadAttrs(self, builder):
-        for key, typeVal in builder.attrs.iteritems():
+        for key, typeVal in builder.attrs.items():
             if key not in self.attrTree.attrs():
                 attrType, attrVal = typeVal
                 # attrType = type(val)

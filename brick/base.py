@@ -1,6 +1,6 @@
 import json
 from collections import OrderedDict
-from lib.path import Path
+from brick.lib.path import Path
 from .constants import BuildStatus, BLUEPRINT_EXTENSION
 from . import attr_type
 from brick import lib
@@ -13,6 +13,10 @@ import logging
 
 log = logging.getLogger("brick")
 
+if sys.version_info[0] > 2:
+    unicode = str
+else:
+    unicode = unicode
 
 class Builder(object):
     def __init__(self):
@@ -199,7 +203,7 @@ class Builder(object):
             yield block
 
     def doTheRunning(self, block):
-        for key, val in self.attrs.iteritems():
+        for key, val in self.attrs.items():
             block.setRunTimeAttr(key, val)
 
         block.execute()
@@ -249,7 +253,7 @@ class Block(object):
             self.buildStatus = BuildStatus.success
         except Exception:
             traceStr = '\n'.join(traceback.format_exception(*sys.exc_info()))
-            print traceStr
+            print(traceStr)
             self.buildStatus = BuildStatus.fail
 
     @property
@@ -286,7 +290,7 @@ class Block(object):
                     raise ValueError("cannot find attribute {} from input block {}".format(attr, node.name))
 
     def ingestAttrs(self):
-        for key, typeVal in self.attrs.iteritems():
+        for key, typeVal in self.attrs.items():
             attrType, attrVal = typeVal
 
             if attrType == attr_type.Input:
