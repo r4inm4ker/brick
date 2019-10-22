@@ -42,12 +42,10 @@ def getMainWindow(widget):
 class BrickWindow(QtWidgets.QMainWindow):
     def __init__(self, parent=None):
         super(BrickWindow, self).__init__(parent=parent)
-        self.mainWidget = BrickWidget(mainWindow=self)
+        mainWidget = BrickWidget(mainWindow=self)
         self.currentBlueprint = None
-        self.blueprintWidget = self.mainWidget.blueprintWidget
-        self.blockListWidget = self.blueprintWidget.blockListWidget
-        self.mainWidget.setContentsMargins(0, 0, 0, 0)
-        self.setCentralWidget(self.mainWidget)
+        mainWidget.setContentsMargins(0, 0, 0, 0)
+        self.setCentralWidget(mainWidget)
         self.menuBar = None
         self._initMenuBar()
         self._initToolBar()
@@ -60,6 +58,26 @@ class BrickWindow(QtWidgets.QMainWindow):
         self.updateTitle()
 
         self.resize(1300,1080)
+
+    @property
+    def mainWidget(self):
+        return self.centralWidget()
+
+    @property
+    def blueprintWidget(self):
+        return self.mainWidget.blueprintWidget
+
+    @property
+    def headerWidget(self):
+        return self.blueprintWidget.headerWidget
+
+    @property
+    def blockListWidget(self):
+        return self.blueprintWidget.blockListWidget
+
+    @property
+    def builder(self):
+        return self.blueprintWidget.builder
 
     @classmethod
     def launch(cls):
@@ -464,13 +482,9 @@ class BlueprintWidget(QtWidgets.QWidget):
         self.refreshIndicator()
 
     def refreshHeaderAttrs(self):
-        self.builder.attrs.clear()
-        for idx in range(self.headerWidget.attrTree.topLevelItemCount()):
-            item = self.headerWidget.attrTree.topLevelItem(idx)
-            name = item.getName()
-            attrType = item.attrType
-            value = item.getValue()
-            self.builder.attrs[name] = (attrType, value)
+        mainWindow = getMainWindow(self)
+        headerWidget = mainWindow.headerWidget
+        headerWidget.syncData()
 
     def buildNext(self):
         ret = self.builder.buildNext()
@@ -689,9 +703,22 @@ class HeaderWidget(QtWidgets.QGroupBox):
             self.attrTree = qcreate(AttrTree)
             self.attrTree.attrEdited.connect(self.syncData)
 
+    def getData(self):
+        data = OrderedDict()
+        for idx in range(self.attrTree.topLevelItemCount()):
+            item = self.attrTree.topLevelItem(idx)
+            name = item.getName()
+            attrType = item.attrType
+            value = item.getValue()
+            data[name] = (attrType, value)
+
+        return data
+
+
     def syncData(self):
+        data = self.getData()
         mainWindow = getMainWindow(self)
-        mainWindow.blueprintWidget.refreshHeaderAttrs()
+        mainWindow.builder.syncGlobalAttrs(data)
 
     def initAttrs(self, builder):
         if not hasattr(builder, 'attrs') or not getattr(builder, 'attrs'):
@@ -768,12 +795,17 @@ class AttrTree(QtWidgets.QTreeWidget):
 
     def addAttr(self, attrData):
         attrItem = AttrItem(attrData, parentWidget=self)
+
         self.addTopLevelItem(attrItem)
         attrItem.setFlags(attrItem.flags() ^ QtCore.Qt.ItemIsSelectable)
         attrItem.setWidget()
+        attrItem.signal.attrEdited.connect(self.emitSignal)
 
         if hasattr(self._parent, "sizeUp"):
             self._parent.sizeUp()
+
+    def emitSignal(self):
+        self.attrEdited.emit()
 
     def setAttr(self, key, val):
         for item in self.allItems():
@@ -798,7 +830,7 @@ class AttrTree(QtWidgets.QTreeWidget):
                                                      QtWidgets.QMessageBox.No)
             if confirm == QtWidgets.QMessageBox.Yes:
                 self.removeAttr(currItem)
-                self.attrEdited.emit()
+                self.emitSignal()
 
     def removeAttr(self, attrItem):
         idx = self.indexOfTopLevelItem(attrItem)
@@ -813,7 +845,7 @@ class AttrTree(QtWidgets.QTreeWidget):
     def renameAttrCallback(self, newName):
         currItem = self.currentItem()
         currItem.setName(newName)
-        self.attrEdited.emit()
+        self.emitSignal()
 
     def showAddAttrDialog(self):
         dialog = AddAttrDialog(parent=self)
@@ -823,7 +855,7 @@ class AttrTree(QtWidgets.QTreeWidget):
     def attrAddedCallback(self, data):
         itemData = (data.get("name"), (data.get("type"), data.get("value")))
         self.addAttr(itemData)
-        self.attrEdited.emit()
+        self.emitSignal()
 
     def attrs(self):
         labels = []
@@ -834,9 +866,16 @@ class AttrTree(QtWidgets.QTreeWidget):
         return labels
 
 
+class ItemEditSignal(QtCore.QObject):
+    attrEdited = QtCore.Signal()
+
 class AttrItem(QtWidgets.QTreeWidgetItem):
+    # attrEdited = QtCore.Signal()
+
     def __init__(self, itemData, parentWidget=None):
         super(AttrItem, self).__init__()
+
+        self.signal = ItemEditSignal()
 
         self.setSizeHint(1, QtCore.QSize(100,30))
 
@@ -852,9 +891,16 @@ class AttrItem(QtWidgets.QTreeWidgetItem):
         if defaultValue is not None and defaultValue != '':
             self.fieldWidget.setValue(defaultValue)
 
-        mainWindow = getMainWindow(self.parentWidget)
-        self.fieldWidget.editFinished.connect(mainWindow.editorWidget.syncData)
-        self.fieldWidget.editFinished.connect(mainWindow.blueprintWidget.refreshHeaderAttrs)
+        # mainWindow = getMainWindow(self.parentWidget)
+
+        # if isinstance(parentWidget, HeaderWidget):
+
+        self.fieldWidget.editFinished.connect(self.emitSignal)
+
+        # self.fieldWidget.editFinished.connect(mainWindow.editorWidget.syncData)
+        # self.fieldWidget.editFinished.connect(mainWindow.blueprintWidget.refreshHeaderAttrs)
+    def emitSignal(self):
+        self.signal.attrEdited.emit()
 
     @property
     def attrName(self):

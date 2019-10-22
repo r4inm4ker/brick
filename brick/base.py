@@ -162,6 +162,11 @@ class Builder(object):
         newList = [nameMap.get(name, None) for name in order if nameMap.get(name, None)]
         self.blocks = newList
 
+    def syncGlobalAttrs(self, data):
+        self.attrs.clear()
+        for key, value in data.items():
+            self.attrs[key] = value
+
     def rewind(self):
         self.nextStep = 0
 
