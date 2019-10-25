@@ -18,7 +18,8 @@ class Maya_Log_Widget(QtWidgets.QWidget):
 
     def _initUI(self):
         layout = VBoxLayout(self)
-
+        mc.window()
+        mc.columnLayout()
         outputLog = mc.cmdScrollFieldReporter(clr=True)
         self.output_log_widget = convertMayaControl(outputLog)
         layout.addWidget(self.output_log_widget)
