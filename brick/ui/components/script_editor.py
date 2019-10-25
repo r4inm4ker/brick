@@ -46,35 +46,38 @@ class ScriptEditor(QtWidgets.QDialog):
         self.close()
 
 
-class PythonTextEditor(QtWidgets.QPlainTextEdit):
-    def __init__(self,*args,**kwargs):
-        super(PythonTextEditor, self).__init__(*args,**kwargs)
 
-        font = QtGui.QFont("Monospace")
-        font.setStyleHint(QtGui.QFont.TypeWriter)
-        font.setPointSize(11)
-        self.setFont(font)
 
-        tabStop = 4
-        metrics = QtGui.QFontMetrics(font)
-        self.setTabStopWidth(tabStop * metrics.width(' '))
+from pyqode.core import modes, panels
+from pyqode.python import modes as pymodes, widgets
+
+
+class PythonTextEditor(widgets.PyCodeEditBase):
+    def __init__(self, *args, **kwargs):
+        super(PythonTextEditor, self).__init__(*args, **kwargs)
+
+        #--- core panels
+        self.panels.append(panels.LineNumberPanel())
+
+        #--- core modes
+        self.modes.append(modes.CaretLineHighlighterMode())
+        self.modes.append(modes.ExtendedSelectionMode())
+        self.modes.append(modes.SmartBackSpaceMode())
+        self.modes.append(modes.SymbolMatcherMode())
+        self.modes.append(modes.ZoomMode())
+
+        #---  python specific modes
+        self.modes.append(pymodes.CommentsMode())
+        self.modes.append(pymodes.PyAutoIndentMode())
+        self.modes.append(pymodes.PyIndenterMode())
+
+        self.background = QtGui.QColor(0,0,0)
+        self.foreground = QtGui.QColor(255,255,255)
+        # self.setStyleSheet('')
 
         highlight = PythonHighlighter(self.document())
 
-        self.textChanged.connect(self.convertTabToSpace)
 
-    def convertTabToSpace(self):
-        pass
-        # disable this first until we can make it reliable
-        '''
-        cur = self.textCursor()
-        if cur.previousChar == '\t':
-            print "CONVERT TAB TO SPACE"
-            cur.deletePreviousChar()
-            cur.insertText('    ')
-
-            # self.text_edit.insertPlainText('    ')
-        '''
 
     def getCurrentText(self):
         currentScript = self.toPlainText()
@@ -82,20 +85,22 @@ class PythonTextEditor(QtWidgets.QPlainTextEdit):
         convertedScript = convertedScript.replace('\t', '    ')
         return convertedScript
 
-#
-# # !/usr/bin/env python
-# # -*- coding: utf-8 -*-
-#
-# import sys
-# from qqt import QtWidgets, QtCore
-# import qdarkstyle
-#
-# if __name__ == '__main__':
-#     app = QtWidgets.QApplication([])
-#
-#     # app.setStyleSheet(qdarkstyle.load_stylesheet_pyside())
-#
-#     ui = ScriptEditor()
-#     ui.show()
-#
-#     sys.exit(app.exec_())
+
+# !/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+
+if __name__ == '__main__':
+    import sys
+    from qqt import QtWidgets, QtCore
+    import qdarkstyle
+
+    app = QtWidgets.QApplication([])
+
+    # app.setStyleSheet(qdarkstyle.load_stylesheet_pyside())
+
+    ui = ScriptEditor()
+    ui.show()
+
+    sys.exit(app.exec_())
+
