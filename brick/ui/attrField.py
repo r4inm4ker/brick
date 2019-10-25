@@ -261,8 +261,13 @@ class ScriptField(AttrField, QtWidgets.QWidget):
     def openScriptEditor(self):
         currentScript = self.scriptField.text()
         convertedScript = attr_type.Script(currentScript.replace(r'\n', '\n'))
-        self._sui = ScriptEditor(convertedScript, self)
+        self._sui = ScriptEditor(script=convertedScript)
+        self._sui.scriptAccepted.connect(self.scriptAcceptedCallback)
         self._sui.show()
+
+    def scriptAcceptedCallback(self, script):
+        self.scriptField.setText(script)
+        self.emitSignal()
 
     def getValue(self):
         val = self.scriptField.text()
