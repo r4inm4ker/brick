@@ -21,6 +21,7 @@ else:
 class Builder(object):
     def __init__(self):
         self.blocks = []
+        self.uuid = uuid.uuid4()
         self.notes = ""
         self._name = ""
         self.attrs = OrderedDict()
@@ -73,6 +74,7 @@ class Builder(object):
 
         writeData['notes'] = notes
         writeData['type'] = self.__class__.__name__
+        writeData['uuid'] = str(self.uuid)
 
         # serialize attrs
         srAttrs = OrderedDict()
@@ -127,6 +129,10 @@ class Builder(object):
         builderCls = lib.getBuilderClassesByName(data.get('type'))
 
         builder = builderCls()
+
+        uuid = data.get('uuid')
+        if uuid:
+            builder.uuid = uuid
 
         rawAttrs = data.get('attrs')
 
@@ -228,7 +234,7 @@ class GenericBuilder(Builder):
 
 class Block(object):
     def __init__(self):
-        self.uuid = None
+        self.uuid = str(uuid.uuid4())
         self.notes = ''
         self.attrs = {}
         self.runTimeAttrs = {}
@@ -263,7 +269,7 @@ class Block(object):
 
     @property
     def name(self):
-        return self._name or '{0}_{1}'.format(self.__class__.__name__, str(uuid.uuid4()))
+        return self._name or '{0}_{1}'.format(self.__class__.__name__, str(self.uuid))
 
     @name.setter
     def name(self, name):
@@ -312,7 +318,7 @@ class Block(object):
         data['type'] = self.__class__.__name__
         data['name'] = self.name
         data['notes'] = self.notes
-
+        data['uuid'] = str(self.uuid)
         data['active'] = self.active
 
         # serialize attrs
@@ -332,6 +338,12 @@ class Block(object):
         block = blockClass()
         block.name = data.get('name')
         block.notes = data.get('notes')
+
+        uuid = data.get('uuid')
+        # check, for old style compatibility
+        # TODO: if statement can be removed in the future when every blueprint and block got uuid
+        if uuid:
+            block.uuid = uuid
 
         convertedAttrs = OrderedDict()
 
