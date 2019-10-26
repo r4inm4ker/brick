@@ -245,6 +245,8 @@ class Block(object):
         self.parent = None
         self.buildStatus = BuildStatus.nothing
 
+    def new_uuid(self):
+        self.uuid = str(uuid.uuid4())
 
     def setAttr(self, key, typeVal):
         self.attrs[key] = typeVal

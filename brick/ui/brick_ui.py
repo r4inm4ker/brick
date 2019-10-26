@@ -8,7 +8,8 @@ from qqt import QtCore, QtGui, QtWidgets, QtCompat
 from qqt.gui import qcreate, VBoxLayout, HBoxLayout, Button, ContextMenu, Splitter, Spacer, StringField
 
 from brick import base
-from brick.base import log
+from brick import attr_type
+from brick.base import log, Block
 
 from brick import lib
 from brick import settings
@@ -570,6 +571,15 @@ class BlockListWidget(QtWidgets.QListWidget):
 
         # self.contextMenu.addCommand("edit annotation", self.editAnnotationCallback)
         # self.contextMenu.addSeparator()
+
+        icon = IconManager.get("copy.png", type="icon")
+        self.contextMenu.addCommand("copy", self.copyBlock, icon=icon)
+
+        icon = IconManager.get("paste.png", type="icon")
+        self.contextMenu.addCommand("paste", self.pasteBlock, icon=icon)
+
+        self.contextMenu.addSeparator()
+
         icon = IconManager.get("start_from_here.png", type="icon")
         self.contextMenu.addCommand("start from here", self.setNextToSelected, icon=icon)
 
@@ -582,6 +592,24 @@ class BlockListWidget(QtWidgets.QListWidget):
     @property
     def blockWidgets(self):
         return [self.item(idx).widget for idx in range(self.count())]
+
+    def copyBlock(self):
+        items = self.selectedItems()
+        blocks = []
+        for item in items:
+            block = item.block
+            blocks.append(block)
+
+        settings.dumpBlocks(blocks)
+
+    def pasteBlock(self):
+        blockDataList = settings.loadBlocks()
+        for data in blockDataList:
+            block = Block.load(data)
+            newName = self.builder.getNextUniqueName(blockType=block.__class__.__name__)
+            block.new_uuid()
+            block.name=newName
+            self.insertBlock(block)
 
     def mousePressEvent(self, event, *args, **kwargs):
         self.setDragDropMode(self.InternalMove)
@@ -693,7 +721,14 @@ class BlockListWidget(QtWidgets.QListWidget):
 
 
 class BlockItem(QtWidgets.QListWidgetItem):
-    pass
+    def __init__(self, *args, **kwargs):
+        super(BlockItem, self).__init__(*args, **kwargs)
+        self.widget = None
+
+    @property
+    def block(self):
+        return self.widget.block
+
 
 
 class HeaderWidget(QtWidgets.QGroupBox):
@@ -795,10 +830,41 @@ class AttrTree(QtWidgets.QTreeWidget):
         action.triggered.connect(self.removeSelectedAttr)
         icon = IconManager.get("trashbin.svg", type="icon")
         action.setIcon(icon)
+        self.menu.addAction(action)
 
+        action = QtWidgets.QAction('copy attr', self)
+        action.triggered.connect(self.copyAttr)
+        icon = IconManager.get("copy.png", type="icon")
+        action.setIcon(icon)
+        self.menu.addAction(action)
+
+        action = QtWidgets.QAction('paste attr', self)
+        action.triggered.connect(self.pasteAttr)
+        icon = IconManager.get("paste.png", type="icon")
+        action.setIcon(icon)
         self.menu.addAction(action)
 
         self.menu.exec_(event.globalPos())
+
+    def copyAttr(self):
+        item = self.currentItem()
+        data = []
+
+        keyval = (item.getName(), (item.getType().__name__,item.getValue()))
+
+        data.append(keyval)
+
+        settings.dumpAttrs(data)
+
+        self.emitSignal()
+
+    def pasteAttr(self):
+        attrData = settings.loadAttrs()
+        for each in attrData:
+            self.addAttr(each)
+
+        self.emitSignal()
+
 
     def addAttr(self, attrData):
         attrItem = AttrItem(attrData, parentWidget=self)
@@ -887,7 +953,12 @@ class AttrItem(QtWidgets.QTreeWidgetItem):
         self.setSizeHint(1, QtCore.QSize(100,30))
 
         self.parentWidget = parentWidget
+
         attrName, (attrType, defaultValue) = itemData
+
+        if isinstance(attrType, (str, unicode)):
+            attrType = attr_type.getTypeFromName(attrType)
+
 
         self.attrType = attrType
 
@@ -928,6 +999,11 @@ class AttrItem(QtWidgets.QTreeWidgetItem):
     def setValue(self, value):
         self.fieldWidget.setValue(value)
 
+    def getType(self):
+        return self.attrType
+
+    def setType(self, atype):
+        self.attrType = atype
 
 class AddAttrDialog(QtWidgets.QDialog):
     title = "Add Attr"

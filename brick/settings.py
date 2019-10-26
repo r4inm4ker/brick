@@ -22,6 +22,10 @@ def getSettingsDir():
     return settingsDir
 
 
+def getDumpFile():
+    return getSettingsDir() / "tmp_dump.json"
+
+
 def getHistoryFile():
     return getSettingsDir() / "history.json"
 
@@ -98,3 +102,49 @@ def addRecentBlueprint(filePath):
         data[Settings.Recent_Files] = data[Settings.Recent_Files][0:-1]
 
     writeHistoryFile(data)
+
+
+
+
+def dumpBlocks(blocks):
+    dumpFile = getDumpFile()
+
+    blockData = []
+    for block in blocks:
+        blockData.append(block.dump())
+
+    data = {}
+    data['blocks'] = blockData
+
+    with open(dumpFile, "w") as fd:
+        json.dump(data, fd, indent=4)
+
+    log.info("data dumped to: {}".format(dumpFile))
+
+
+def loadBlocks():
+    dumpFile = getDumpFile()
+
+    with open(dumpFile, "r") as fd:
+        data = json.load(fd, object_pairs_hook=OrderedDict)
+
+    return data.get('blocks')
+
+
+def dumpAttrs(attrData):
+    dumpFile = getDumpFile()
+    data = {}
+    data['attrs'] = attrData
+
+    with open(dumpFile, "w") as fd:
+        json.dump(data, fd, indent=4)
+
+    log.info("data dumped to: {}".format(dumpFile))
+
+def loadAttrs():
+    dumpFile = getDumpFile()
+
+    with open(dumpFile, "r") as fd:
+        data = json.load(fd, object_pairs_hook=OrderedDict)
+
+    return data.get('attrs')
