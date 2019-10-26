@@ -302,6 +302,39 @@ class PathField(AttrField, QtWidgets.QWidget):
         return unicode(val)
 
 
+class NamedObjectField(AttrField, QtWidgets.QWidget):
+    attrType = attr_type.NamedObject
+
+    def __init__(self, parent=None):
+        super(NamedObjectField, self).__init__(parent)
+        layout = HBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        with layout:
+            self.scriptField = qcreate(QtWidgets.QLineEdit)
+            self.scriptField.setEnabled(False)
+            self.editButton = qcreate(Button, "edit")
+        self.editButton.clicked.connect(self.openScriptEditor)
+
+    def setValue(self, value):
+        setVal = attr_type.Script(value.replace('\n', r'\n'))
+        self.scriptField.setText(setVal)
+
+    def openScriptEditor(self):
+        currentScript = self.scriptField.text()
+        convertedScript = attr_type.Script(currentScript.replace(r'\n', '\n'))
+        self._sui = ScriptEditor(script=convertedScript)
+        self._sui.scriptAccepted.connect(self.scriptAcceptedCallback)
+        self._sui.show()
+
+    def scriptAcceptedCallback(self, script):
+        self.scriptField.setText(script)
+        self.emitSignal()
+
+    def getValue(self):
+        val = self.scriptField.text()
+        return attr_type.Script(val.replace(r'\n', '\n'))
+
+
 class BlockInputField(AttrField, QtWidgets.QWidget):
     attrType = attr_type.Input
 
@@ -349,7 +382,7 @@ class AttrTypeChooser(ChooserField):
 
 
 class AttrFieldMaker(object):
-    fields = (StringField, IntField, FloatField, BoolField, ListField, DictField, ScriptField, PathField, BlockInputField)
+    fields = (StringField, IntField, FloatField, BoolField, ListField, DictField, ScriptField, PathField, NamedObjectField, BlockInputField)
 
     defaultWidget = StringField
 

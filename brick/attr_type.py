@@ -10,7 +10,9 @@ else:
     unicode = unicode
 
 class BrickAttr(object):
-    pass
+    @classmethod
+    def evaluate(cls, name, value, parent_locals=None):
+        return value
 
 class String(BrickAttr, unicode):
     pass
@@ -44,6 +46,24 @@ class Chooser(BrickAttr, unicode):
 
 class TypeChosser(Chooser):
     pass
+
+
+class NamedObject(BrickAttr, object):
+    @classmethod
+    def evaluate(cls, name, value, parent_locals=None):
+        copyLocals = OrderedDict()
+
+        for key,val in parent_locals.items():
+            copyLocals[key] = val
+
+        for key,val in locals().items():
+            copyLocals[key] = val
+
+        exec (value, None, copyLocals)
+        for key, val in copyLocals.items():
+            # right now, support the assignment name to be either the variable name itself, or "self"
+            if key == name or key == "self":
+                return val
 
 
 def getTypeFromName(typeName):

@@ -251,8 +251,13 @@ class Block(object):
     def setAttr(self, key, typeVal):
         self.attrs[key] = typeVal
 
-    def setRunTimeAttr(self, key, typeVal):
-        self.runTimeAttrs[key] = typeVal[1]
+    def setRunTimeAttr(self, attrName, typeVal):
+        attrType, attrVal = typeVal
+
+        # ask each attrType to convert the value into something usable
+        attrVal = attrType.evaluate(attrName, attrVal, parent_locals=self.runTimeAttrs)
+        self.runTimeAttrs[attrName] = attrVal
+
 
     def execute(self):
         try:
