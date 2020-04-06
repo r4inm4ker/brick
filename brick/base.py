@@ -54,13 +54,19 @@ class Builder(object):
         block.name = nextUniqueName
         return block
 
-    def getNextUniqueName(self, blockType=None):
-        baseName = blockType or "block"
+    def getNextUniqueName(self, blockType=None, prefix=None):
+        if blockType:
+            baseName = blockType
+        elif prefix:
+            baseName = prefix
+        else:
+            baseName = "block"
         blockIndex = 1
+        uname = baseName
         while True:
-            uname = "{0}{1}".format(baseName, blockIndex)
             for currentBlock in self.blocks:
                 if uname == currentBlock.name:
+                    uname = "{0}{1}".format(baseName, blockIndex)
                     blockIndex += 1
                     break
             else:

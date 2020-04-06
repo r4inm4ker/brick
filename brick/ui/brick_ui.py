@@ -22,6 +22,18 @@ from brick.ui.components import block_widgets
 from brick.ui import IconManager
 
 
+# Monkey patchy python 3 support
+try:
+    basestring
+except NameError:
+    basestring = str
+
+try:
+    unicode
+except NameError:
+    unicode = str
+
+
 def getMainWindow(widget):
     """ get brick window object from child
 
@@ -363,9 +375,12 @@ class BlueprintWidget(QtWidgets.QWidget):
                 w2.setTitle("Blueprint")
                 w2.setStyleSheet('''QGroupBox{ font-size: 14px; font-weight: bold;}''')
                 w2.setAlignment(QtCore.Qt.AlignCenter)
-                w2.layout().setContentsMargins(0, 0, 0, 0)
-                with w2.layout():
-                    self.blockListWidget = qcreate(BlockListWidget, blueprintWidget=self)
+                w2lay = w2.layout()
+                w2lay.setContentsMargins(0, 0, 0, 0)
+                with w2lay:
+                    self.blockListWidget = BlockListWidget(blueprintWidget=self)
+                    w2lay.add(self.blockListWidget)
+
                     with qcreate(HBoxLayout):
                         icon = IconManager.get("rewind.png", type="icon")
                         self.rewindButton = qcreate(Button, icon, "")
@@ -404,6 +419,18 @@ class BlueprintWidget(QtWidgets.QWidget):
 
         self.blockListWidget.itemOrderChanged.connect(self.itemOrderChanged)
         self.blockListWidget.currentIndexSet.connect(self.setBuilderIndex)
+
+        self.blockListWidget.installEventFilter(self)
+
+    def eventFilter(self, widget, event):
+        if (event.type() == QtCore.QEvent.KeyPress and widget is self.blockListWidget):
+            key = event.key()
+            if key == QtCore.Qt.Key_D and event.modifiers() in [QtCore.Qt.ControlModifier]:
+                self.blockListWidget.duplicateSelected()
+                return True
+
+        return QtWidgets.QWidget.eventFilter(self, widget, event)
+
 
     @property
     def builder(self):
@@ -593,23 +620,45 @@ class BlockListWidget(QtWidgets.QListWidget):
     def blockWidgets(self):
         return [self.item(idx).widget for idx in range(self.count())]
 
+    def duplicateSelected(self):
+        copyIndex = self.copyBlock()
+        inserted_indices = self.pasteBlock(index=copyIndex+1)
+
+        self.clearSelection()
+        for idx in inserted_indices:
+            self.item(idx).setSelected(True)
+
     def copyBlock(self):
         items = self.selectedItems()
         blocks = []
+        last_index = 0
         for item in items:
+            index = self.indexFromItem(item).row()
             block = item.block
             blocks.append(block)
+            if index > last_index:
+                last_index = index
 
         settings.dumpBlocks(blocks)
+        return last_index
 
-    def pasteBlock(self):
+    def pasteBlock(self, index=None):
         blockDataList = settings.loadBlocks()
+
+        inserted_indices  = []
+
         for data in blockDataList:
             block = Block.load(data)
-            newName = self.builder.getNextUniqueName(blockType=block.__class__.__name__)
+            newName = self.builder.getNextUniqueName(prefix="Copy of "+data.get("name"))
             block.new_uuid()
             block.name=newName
-            self.insertBlock(block)
+            if index is not None:
+                item = self.insertBlock(block, index=index)
+                # self.scrollToItem(item, QtWidgets.QAbstractItemView.PositionAtTop)
+                inserted_indices.append(index)
+                index+=1
+
+        return inserted_indices
 
     def mousePressEvent(self, event, *args, **kwargs):
         self.setDragDropMode(self.InternalMove)
@@ -628,7 +677,7 @@ class BlockListWidget(QtWidgets.QListWidget):
 
     def rowsInserted(self, *args, **kwargs):
         super(BlockListWidget, self).rowsInserted(*args, **kwargs)
-        self.scrollToBottom()
+        # self.scrollToBottom()
 
     def setNextToSelected(self):
         index = self.currentIndex()
@@ -706,6 +755,8 @@ class BlockListWidget(QtWidgets.QListWidget):
         self.clearSelection()
         item.setSelected(True)
         self.itemOrderChanged.emit()
+
+        return item
 
     def runBlockCallback(self, blockWidget):
         item = blockWidget.item
@@ -1015,10 +1066,11 @@ class AddAttrDialog(QtWidgets.QDialog):
         self.setWindowTitle(self.title)
         layout = VBoxLayout(self)
         with layout:
+            self.attrNameInput = qcreate(StringField, label="Attr Name: ")
+
             with qcreate(HBoxLayout):
                 qcreate(QtWidgets.QLabel, "Attr Type: ")
                 self.fieldWidget = qcreate(attrField.AttrTypeChooser)
-            self.attrNameInput = qcreate(StringField, label="Attr Name: ")
 
             with qcreate(HBoxLayout):
                 qcreate(Spacer, mode="horizontal")

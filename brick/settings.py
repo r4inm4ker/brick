@@ -108,6 +108,7 @@ def addRecentBlueprint(filePath):
 
 def dumpBlocks(blocks):
     dumpFile = getDumpFile()
+    print("dumpfile: ", dumpFile)
 
     blockData = []
     for block in blocks:

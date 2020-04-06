@@ -46,7 +46,7 @@ class ScriptEditor(QtWidgets.QDialog):
         self.close()
 
 
-class PythonTextEditor(QtWidgets.QPlainTextEdit):
+class PythonTextEditor(QtWidgets.QTextEdit):
     def __init__(self,*args,**kwargs):
         super(PythonTextEditor, self).__init__(*args,**kwargs)
 
@@ -78,8 +78,20 @@ class PythonTextEditor(QtWidgets.QPlainTextEdit):
 
     def getCurrentText(self):
         currentScript = self.toPlainText()
-        convertedScript = attr_type.Script(currentScript.replace('\n', r'\n'))
-        convertedScript = convertedScript.replace('\t', '    ')
+
+        lines = currentScript.split("\n")
+
+        savedLines = []
+        for line in lines:
+            preprend = ""
+            while line.startswith("\t"):
+                preprend = preprend + "    "
+                line = line.replace("\t","",1)
+
+            savedLines.append(preprend+line)
+
+        convertedScript = "\n".join(savedLines)
+        # convertedScript = currentScript.replace('\t', '    ')
         return convertedScript
 
 #

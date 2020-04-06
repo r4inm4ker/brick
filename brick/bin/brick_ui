@@ -3,14 +3,17 @@
 
 import sys
 from qqt import QtWidgets, QtCore
-import qdarkstyle
+from qqt.style import dark_palette_fusion
 from brick.ui.brick_ui import BrickWindow
 
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication([])
 
-    app.setStyleSheet(qdarkstyle.load_stylesheet_pyside())
+    # app.setStyleSheet(qdarkstyle.load_stylesheet_pyside())
+
+    palette = dark_palette_fusion.QDarkPalette()
+    palette.set_app(app)
 
     ui = BrickWindow()
     ui.show()
