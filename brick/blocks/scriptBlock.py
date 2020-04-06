@@ -46,7 +46,7 @@ class TestScriptBlock(Custom):
 
         func = self.runTimeAttrs.get('script')
 
-        func = 'print "RUN {}"'.format(self.name)
+        func = 'print("RUN {}")'.format(self.name)
 
         if not func:
             return
